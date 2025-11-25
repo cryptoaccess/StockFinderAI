@@ -1,0 +1,15 @@
+{
+  "name": "congress-trades-api",
+  "version": "1.0.0",
+  "description": "Backend API to scrape congressional trades data",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "proxy-agent": "^6.5.0",
+    "puppeteer": "^21.6.1"
+  }
+}
