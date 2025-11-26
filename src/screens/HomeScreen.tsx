@@ -8,7 +8,8 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
-  StatusBar
+  StatusBar,
+  Share
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
@@ -23,7 +24,7 @@ const screenWidth = Dimensions.get('window').width;
 const HomeScreen = () => {
   const navigation = useNavigation();
   
-  // Store the full dataset (up to 365 days)
+  // Store the full dataset
   const [fullMarketData, setFullMarketData] = useState<{
     dow: { prices: number[], dates: string[] },
     sp500: { prices: number[], dates: string[] },
@@ -109,8 +110,8 @@ const HomeScreen = () => {
     }
   };
 
-  // Fetch market data using Yahoo Finance API
-  // Fetch market data using Yahoo Finance API
+
+  // Fetch market data using Yahoo Finance
   const fetchAllMarketData = async () => {
     setLoading(true);
     try {
@@ -123,7 +124,7 @@ const HomeScreen = () => {
         axios.get('https://query1.finance.yahoo.com/v8/finance/chart/QQQ?range=3mo&interval=1d')
       ]);
       
-      console.log('=== API RESPONSES RECEIVED ===');
+      console.log('=== RESPONSES RECEIVED ===');
       
       // Process Yahoo Finance response
       const processYahooData = (response: any, symbol: string) => {
@@ -313,6 +314,29 @@ const HomeScreen = () => {
     return (((lastPrice - firstPrice) / firstPrice) * 100).toFixed(2);
   };
 
+  // Share app function
+  const shareApp = async () => {
+    try {
+      const result = await Share.share({
+        message: 'Check out StockFinderAI - Tracks Congress and insider trades, finds AI-powered picks, and price-dip opportunities! Download now: [Your App Store Link]',
+        title: 'StockFinderAI - Smart Stock Research',
+      });
+
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          console.log('Shared with activity type:', result.activityType);
+        } else {
+          console.log('Shared successfully');
+        }
+      } else if (result.action === Share.dismissedAction) {
+        console.log('Share dismissed');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to share');
+      console.error('Share error:', error);
+    }
+  };
+
   // Render a single index chart
   const renderIndexChart = (chartTitle: string, chartData: number[], chartColor: string) => {
     const change = getTimeRangePercentageChange(chartData);
@@ -414,31 +438,37 @@ const HomeScreen = () => {
           <>
             {/* Market Indices Section */}
             <View style={styles.section}>
-              {/* Time Range Toggle */}
-              <View style={styles.toggleContainer}>
-                <TouchableOpacity 
-                  style={[styles.toggleButton, timeRange === '7' && styles.toggleButtonActive]}
-                  onPress={() => setTimeRange('7')}
-                >
-                  <Text style={[styles.toggleText, timeRange === '7' && styles.toggleTextActive]}>
-                    7 Days
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.toggleButton, timeRange === '30' && styles.toggleButtonActive]}
-                  onPress={() => setTimeRange('30')}
-                >
-                  <Text style={[styles.toggleText, timeRange === '30' && styles.toggleTextActive]}>
-                    30 Days
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.toggleButton, timeRange === '90' && styles.toggleButtonActive]}
-                  onPress={() => setTimeRange('90')}
-                >
-                  <Text style={[styles.toggleText, timeRange === '90' && styles.toggleTextActive]}>
-                    90 Days
-                  </Text>
+              {/* Time Range Toggle and Share Button */}
+              <View style={styles.toggleAndShareRow}>
+                <View style={styles.toggleContainer}>
+                  <TouchableOpacity 
+                    style={[styles.toggleButton, timeRange === '7' && styles.toggleButtonActive]}
+                    onPress={() => setTimeRange('7')}
+                  >
+                    <Text style={[styles.toggleText, timeRange === '7' && styles.toggleTextActive]}>
+                      7 Days
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.toggleButton, timeRange === '30' && styles.toggleButtonActive]}
+                    onPress={() => setTimeRange('30')}
+                  >
+                    <Text style={[styles.toggleText, timeRange === '30' && styles.toggleTextActive]}>
+                      30 Days
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.toggleButton, timeRange === '90' && styles.toggleButtonActive]}
+                    onPress={() => setTimeRange('90')}
+                  >
+                    <Text style={[styles.toggleText, timeRange === '90' && styles.toggleTextActive]}>
+                      90 Days
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity style={styles.shareButton} onPress={shareApp}>
+                  <Text style={styles.shareButtonIcon}>📤</Text>
+                  <Text style={styles.shareButtonText}>Share</Text>
                 </TouchableOpacity>
               </View>
 
@@ -609,7 +639,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  toggleAndShareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
   toggleContainer: {
+    flex: 1,
     flexDirection: 'row',
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
     borderRadius: 10,
@@ -617,6 +654,28 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     borderWidth: 1,
     borderColor: 'rgba(0, 212, 255, 0.3)',
+  },
+  shareButton: {
+    backgroundColor: 'rgba(0, 212, 255, 0.15)',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 70,
+    marginBottom: 5,
+    height: 47,
+  },
+  shareButtonIcon: {
+    fontSize: 16,
+    marginBottom: 1,
+  },
+  shareButtonText: {
+    color: '#00d4ff',
+    fontSize: 10,
+    fontWeight: '600',
   },
   toggleButton: {
     flex: 1,

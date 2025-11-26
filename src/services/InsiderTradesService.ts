@@ -7,10 +7,10 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { INSIDER_TRADES_URL } from '../config/api';
 
 const CACHE_KEY = 'insiderTrades_cache';
 const LAST_FETCH_DATE_KEY = 'insiderTrades_lastFetchDate';
-const API_URL = 'http://10.0.2.2:3001/api/insider-trades';
 
 interface InsiderTrade {
   id: string;
@@ -139,7 +139,7 @@ class InsiderTradesService {
    */
   private async fetchFreshTrades(): Promise<InsiderTrade[]> {
     try {
-      const response = await axios.get(API_URL, {
+      const response = await axios.get(INSIDER_TRADES_URL, {
         timeout: 60000, // 60 second timeout since scraping takes time
       });
 

@@ -119,7 +119,17 @@ const WatchList: React.FC = () => {
     return (
       <View style={styles.stockCard}>
         <View style={styles.stockHeader}>
-          <View style={styles.stockTitleContainer}>
+          <TouchableOpacity 
+            style={styles.stockTitleContainer}
+            onPress={() => {
+              // @ts-ignore
+              navigation.navigate('StockSearch', { 
+                symbolList,
+                preSelectedSymbol: item.symbol 
+              });
+            }}
+            activeOpacity={0.7}
+          >
             <View style={styles.stockInfoRow}>
               <View style={styles.stockNameContainer}>
                 <Text style={styles.symbolText}>{item.symbol}</Text>
@@ -139,7 +149,7 @@ const WatchList: React.FC = () => {
                 </View>
               )}
             </View>
-          </View>
+          </TouchableOpacity>
           
           <TouchableOpacity
             style={styles.starButton}

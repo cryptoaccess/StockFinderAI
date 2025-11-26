@@ -7,10 +7,10 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { CONGRESS_TRADES_URL } from '../config/api';
 
 const CACHE_KEY = 'congressTrades_cache';
 const LAST_FETCH_DATE_KEY = 'congressTrades_lastFetchDate';
-const API_URL = 'http://10.0.2.2:3001/api/trades'; // Change for production
 
 interface TradeListing {
   id: string;
@@ -140,7 +140,7 @@ class CongressTradesService {
    */
   private async fetchFreshTrades(): Promise<TradeListing[]> {
     try {
-      const response = await axios.get(API_URL, {
+      const response = await axios.get(CONGRESS_TRADES_URL, {
         timeout: 60000, // 60 second timeout since scraping takes time
       });
 
