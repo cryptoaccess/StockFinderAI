@@ -318,7 +318,7 @@ const HomeScreen = () => {
   const shareApp = async () => {
     try {
       const result = await Share.share({
-        message: 'Check out StockFinderAI - Tracks Congress and insider trades, finds AI-powered picks, and price-dip opportunities! Download now: [Your App Store Link]',
+        message: 'Check out StockFinderAI - Tracks insider trades and price dips, with no registration or account! Download now: [Your App Store Link]',
         title: 'StockFinderAI - Smart Stock Research',
       });
 

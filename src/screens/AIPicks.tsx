@@ -587,7 +587,7 @@ export default function AIPicks({ navigation }: any) {
         <View style={styles.header}>
           <Text style={styles.title}>AI Picks</Text>
           <Text style={styles.subtitle}>
-            Blue chip stocks and your Watch List stocks ranked by recent insider and Congress purchase activity. Data covers up to the last 30 days of activity.
+            Blue-chip stocks and your Watch List stocks ranked by recent insider and Congress trading activity. Analysis includes the last 30 days of activity.
           </Text>
           <TouchableOpacity
             style={styles.rankingsButton}
@@ -609,7 +609,7 @@ export default function AIPicks({ navigation }: any) {
       <View style={styles.header}>
         <Text style={styles.title}>AI Picks</Text>
         <Text style={styles.subtitle}>
-          Blue chip stocks and your Watch List stocks ranked by recent insider and Congress purchase activity. Data covers up to the last 30 days of activity.
+          Blue-chip stocks and your Watch List stocks ranked by recent insider and Congress purchase activity. Data covers up to the last 30 days of activity.
         </Text>
         <TouchableOpacity
           style={styles.rankingsButton}
@@ -646,7 +646,7 @@ export default function AIPicks({ navigation }: any) {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Stock Filtering</Text>
                 <Text style={styles.sectionText}>
-                  Only stocks from your Blue Chip list and Watch List are analyzed. This ensures you see opportunities in companies you're already interested in or have identified as quality investments.
+                  Only stocks from your blue-chip list and watch list are analyzed. This ensures you see opportunities in companies you're already interested in or have identified as quality investments.
                 </Text>
               </View>
 
