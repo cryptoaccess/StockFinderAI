@@ -15,6 +15,8 @@ import { LineChart } from 'react-native-chart-kit';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import CongressTradesService from '../services/CongressTradesService';
+import InsiderTradesService from '../services/InsiderTradesService';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -48,6 +50,21 @@ const HomeScreen = () => {
   const [lastUpdate, setLastUpdate] = useState('');
   const [timeRange, setTimeRange] = useState('7'); // '7', '30', or '90'
   const [symbolList, setSymbolList] = useState<Array<{symbol: string, name: string}>>([]);
+
+  // Preload AI Picks data in the background
+  const preloadAIPicksData = async () => {
+    try {
+      console.log('Preloading AI Picks data in background...');
+      // Fetch both datasets in parallel - this will cache them
+      await Promise.all([
+        CongressTradesService.getTrades(),
+        InsiderTradesService.getTrades()
+      ]);
+      console.log('AI Picks data preloaded successfully');
+    } catch (error) {
+      console.log('Error preloading AI Picks data:', error);
+    }
+  };
 
   // Function to fetch and cache stock symbol list
   const fetchSymbolList = async () => {
@@ -272,6 +289,7 @@ const HomeScreen = () => {
     console.log('Component mounted, fetching data...');
     fetchAllMarketData(); // Full fetch on initial load
     fetchSymbolList(); // Fetch stock symbols for Stock Search
+    preloadAIPicksData(); // Preload AI Picks data in background
   }, []);
 
   // Update display when time range changes (no API call, just slice existing data)
@@ -442,7 +460,7 @@ const HomeScreen = () => {
             {/* Navigation Buttons Grid */}
             <View style={styles.navGrid}>
               <NavButton 
-                title="Watch List" 
+                title="My Watch List" 
                 icon="⭐"
                 onPress={() => {
                   // @ts-ignore
@@ -452,7 +470,10 @@ const HomeScreen = () => {
               <NavButton 
                 title="AI Picks" 
                 icon="🦾"
-                onPress={() => Alert.alert('AI Picks', 'Coming soon!')}
+                onPress={() => {
+                  // @ts-ignore
+                  navigation.navigate('AIPicks');
+                }}
               />
               <NavButton 
                 title="Blue Chip Dips" 
@@ -484,10 +505,29 @@ const HomeScreen = () => {
               <NavButton 
                 title="Insider Trades" 
                 icon="💼"
-                onPress={() => Alert.alert('Insider Trades', 'Coming soon!')}
+                onPress={() => {
+                  // @ts-ignore
+                  navigation.navigate('InsiderTrades');
+                }}
               />
             </View>
           </>
+        )}
+
+        {/* Disclaimer */}
+        {!loading && (
+          <View style={styles.disclaimerSection}>
+            <Text style={styles.disclaimerTitle}>Disclaimer:</Text>
+            <Text style={styles.disclaimerText}>
+              This app provides financial data and analysis for general informational purposes only. It does not provide investment, financial, legal, or tax advice, and nothing contained in the app should be interpreted as a recommendation to buy, sell, or hold any securities. Market data and information may be delayed, inaccurate, or incomplete. The developers and publishers of this app make no guarantees regarding the accuracy, timeliness, or reliability of any content.
+            </Text>
+            <Text style={styles.disclaimerText}>
+              You are solely responsible for evaluating your own investment decisions, and you agree that the developers are not liable for any losses, damages, or consequences arising from the use of this app or reliance on its information.
+            </Text>
+            <Text style={styles.disclaimerText}>
+              All rights reserved. © 2025, Malachi J. King
+            </Text>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -691,6 +731,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     letterSpacing: 1,
+  },
+  disclaimerSection: {
+    paddingHorizontal: 15,
+    paddingVertical: 20,
+    marginTop: 10,
+  },
+  disclaimerTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#cbd5e1',
+    marginBottom: 8,
+  },
+  disclaimerText: {
+    fontSize: 11,
+    color: '#cbd5e1',
+    lineHeight: 16,
+    marginBottom: 8,
   },
 });
 

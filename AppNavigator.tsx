@@ -7,6 +7,8 @@ import StockSearch from './src/screens/StockSearch';
 import BlueChipDips from './src/screens/BlueChipDips';
 import WatchList from './src/screens/WatchList';
 import CongressTrades from './src/screens/CongressTrades';
+import InsiderTrades from './src/screens/InsiderTrades';
+import AIPicks from './src/screens/AIPicks';
 
 const Stack = createStackNavigator();
 
@@ -14,6 +16,7 @@ const AppNavigator = () => (
   <NavigationContainer>
     <Stack.Navigator 
       initialRouteName="Home"
+      detachInactiveScreens={true}
       screenOptions={{
         headerStyle: {
           backgroundColor: '#000000',
@@ -98,6 +101,52 @@ const AppNavigator = () => (
       <Stack.Screen 
         name="CongressTrades" 
         component={CongressTrades} 
+        options={({ navigation }) => ({
+          headerLeft: () => (
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()}
+              style={{ marginLeft: 15, paddingVertical: 8, paddingHorizontal: 5 }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 17, fontWeight: '600' }}>Back</Text>
+            </TouchableOpacity>
+          ),
+          title: '',
+          headerRight: () => (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Home')}
+              style={{ marginRight: 15 }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 17, fontWeight: '600' }}>Home</Text>
+            </TouchableOpacity>
+          ),
+        })}
+      />
+      <Stack.Screen 
+        name="InsiderTrades" 
+        component={InsiderTrades} 
+        options={({ navigation }) => ({
+          headerLeft: () => (
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()}
+              style={{ marginLeft: 15, paddingVertical: 8, paddingHorizontal: 5 }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 17, fontWeight: '600' }}>Back</Text>
+            </TouchableOpacity>
+          ),
+          title: '',
+          headerRight: () => (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Home')}
+              style={{ marginRight: 15 }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 17, fontWeight: '600' }}>Home</Text>
+            </TouchableOpacity>
+          ),
+        })}
+      />
+      <Stack.Screen 
+        name="AIPicks" 
+        component={AIPicks} 
         options={({ navigation }) => ({
           headerLeft: () => (
             <TouchableOpacity 

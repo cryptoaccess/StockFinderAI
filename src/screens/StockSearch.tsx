@@ -412,11 +412,11 @@ const StockSearch = () => {
       
       // Update selected stock with price info if available
       setSelectedStock(prev => {
-        console.log('Updating stock with price:', currentPrice, 'change%:', changePercent);
+        console.log('Updating stock with current price:', currentPrice, '1-day change%:', changePercent);
         return prev ? {
           ...prev,
-          currentPrice,
-          change: changePercent // Use percentage
+          currentPrice
+          // Don't overwrite the 90-day change calculation with 1-day change
         } : null;
       });
       
@@ -948,6 +948,23 @@ const styles = StyleSheet.create({
   watchListSymbol: {
     color: '#7dd3fc',
     fontSize: 12,
+  },
+  disclaimerSection: {
+    paddingHorizontal: 15,
+    paddingVertical: 20,
+    marginTop: 10,
+  },
+  disclaimerTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#cbd5e1',
+    marginBottom: 8,
+  },
+  disclaimerText: {
+    fontSize: 11,
+    color: '#cbd5e1',
+    lineHeight: 16,
+    marginBottom: 8,
   },
 });
 

@@ -133,6 +133,7 @@ const BlueChipDips: React.FC = () => {
   const [showGrowthPicker, setShowGrowthPicker] = useState<boolean>(false);
   const [newStockSymbol, setNewStockSymbol] = useState<string>('');
   const [allAvailableStocks, setAllAvailableStocks] = useState<string[]>(DEFAULT_BLUE_CHIPS);
+  const [watchList, setWatchList] = useState<Array<{symbol: string, name: string}>>([]);
 
   const dayOptions = [2, 3, 5, 7];
   const thresholdOptions = [-2, -3, -4, -5];
@@ -159,7 +160,37 @@ const BlueChipDips: React.FC = () => {
 
   useEffect(() => {
     loadPreferences();
+    loadWatchList();
   }, []);
+
+  const loadWatchList = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('watchList');
+      if (saved) {
+        setWatchList(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.error('Failed to load watch list:', error);
+    }
+  };
+
+  const toggleWatchListStock = async (ticker: string, companyName: string) => {
+    try {
+      const isWatched = watchList.some(item => item.symbol === ticker);
+      let newWatchList;
+      
+      if (isWatched) {
+        newWatchList = watchList.filter(item => item.symbol !== ticker);
+      } else {
+        newWatchList = [...watchList, { symbol: ticker, name: companyName }];
+      }
+      
+      setWatchList(newWatchList);
+      await AsyncStorage.setItem('watchList', JSON.stringify(newWatchList));
+    } catch (error) {
+      console.error('Error toggling watchlist:', error);
+    }
+  };
 
   useEffect(() => {
     if (selectedStocks.length > 0) {
@@ -195,12 +226,16 @@ const BlueChipDips: React.FC = () => {
     }
   };
 
-  const savePreferences = async () => {
+  const savePreferences = async (overrides?: { 
+    growthThreshold?: number;
+    dipThreshold?: number;
+    dayPeriod?: number;
+  }) => {
     try {
       await AsyncStorage.setItem('blueChipSelectedStocks', JSON.stringify(selectedStocks));
-      await AsyncStorage.setItem('blueChipDayPeriod', dayPeriod.toString());
-      await AsyncStorage.setItem('blueChipDipThreshold', dipThreshold.toString());
-      await AsyncStorage.setItem('blueChipGrowthThreshold', growthThreshold.toString());
+      await AsyncStorage.setItem('blueChipDayPeriod', (overrides?.dayPeriod ?? dayPeriod).toString());
+      await AsyncStorage.setItem('blueChipDipThreshold', (overrides?.dipThreshold ?? dipThreshold).toString());
+      await AsyncStorage.setItem('blueChipGrowthThreshold', (overrides?.growthThreshold ?? growthThreshold).toString());
       await AsyncStorage.setItem('blueChipAllAvailableStocks', JSON.stringify(allAvailableStocks));
     } catch (error) {
       console.log('Error saving preferences:', error);
@@ -323,13 +358,13 @@ const BlueChipDips: React.FC = () => {
   const applyDayPeriod = (days: number) => {
     setDayPeriod(days);
     setShowDayPicker(false);
-    savePreferences();
+    savePreferences({ dayPeriod: days });
   };
 
   const applyThreshold = (threshold: number) => {
     setDipThreshold(threshold);
     setShowThresholdPicker(false);
-    savePreferences();
+    savePreferences({ dipThreshold: threshold });
     // Filter existing data
     const filtered = allStockData.filter(
       stock => stock.dipPercentage <= threshold && stock.growth90Day >= growthThreshold
@@ -340,7 +375,7 @@ const BlueChipDips: React.FC = () => {
   const applyGrowthThreshold = (threshold: number) => {
     setGrowthThreshold(threshold);
     setShowGrowthPicker(false);
-    savePreferences();
+    savePreferences({ growthThreshold: threshold });
     // Filter existing data
     const filtered = allStockData.filter(
       stock => stock.dipPercentage <= dipThreshold && stock.growth90Day >= threshold
@@ -467,12 +502,26 @@ const BlueChipDips: React.FC = () => {
   const renderStockItem = ({ item }: { item: StockDipData }) => {
     const dipColor = item.dipPercentage < 0 ? '#ff4444' : '#00ff88';
     const growthColor = item.growth90Day >= 0 ? '#00ff88' : '#ff4444';
+    const isWatched = watchList.some(w => w.symbol === item.symbol);
     
     return (
       <View style={styles.stockCard}>
         <View style={styles.stockHeader}>
           <View style={styles.stockTitleContainer}>
-            <Text style={styles.symbolText}>{item.symbol}</Text>
+            <View style={styles.symbolRow}>
+              <Text style={styles.symbolText}>{item.symbol}</Text>
+              <TouchableOpacity
+                onPress={() => toggleWatchListStock(item.symbol, item.companyName)}
+                style={styles.starButton}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                {isWatched ? (
+                  <Text style={styles.starText}>★</Text>
+                ) : (
+                  <Text style={[styles.starText, styles.starOutline]}>☆</Text>
+                )}
+              </TouchableOpacity>
+            </View>
             <Text style={styles.companyNameText}>{item.companyName}</Text>
           </View>
           <View style={styles.changeContainer}>
@@ -640,6 +689,22 @@ const BlueChipDips: React.FC = () => {
           renderItem={renderStockItem}
           keyExtractor={(item) => item.symbol}
           contentContainerStyle={styles.listContainer}
+          ListFooterComponent={
+            !loading ? (
+              <View style={styles.disclaimerSection}>
+                <Text style={styles.disclaimerTitle}>Disclaimer:</Text>
+                <Text style={styles.disclaimerText}>
+                  This app provides financial data and analysis for general informational purposes only. It does not provide investment, financial, legal, or tax advice, and nothing contained in the app should be interpreted as a recommendation to buy, sell, or hold any securities. Market data and information may be delayed, inaccurate, or incomplete. The developers and publishers of this app make no guarantees regarding the accuracy, timeliness, or reliability of any content.
+                </Text>
+                <Text style={styles.disclaimerText}>
+                  You are solely responsible for evaluating your own investment decisions, and you agree that the developers are not liable for any losses, damages, or consequences arising from the use of this app or reliance on its information.
+                </Text>
+                <Text style={styles.disclaimerText}>
+                  All rights reserved. © 2025, Malachi J. King
+                </Text>
+              </View>
+            ) : null
+          }
         />
       )}
 
@@ -763,7 +828,7 @@ const BlueChipDips: React.FC = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, styles.stockPickerModal]}>
-            <Text style={styles.modalTitle}>Select Stocks to Monitor</Text>
+            <Text style={styles.modalTitle}>Select Stocks for the Blue Chip List</Text>
             
             <View style={styles.selectAllRow}>
               <TouchableOpacity
@@ -933,10 +998,33 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 10,
   },
+  symbolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   symbolText: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#00d4ff',
+  },
+  starButton: {
+    padding: 2,
+  },
+  starText: {
+    fontSize: 20,
+    color: '#fff',
+    lineHeight: 20,
+    textShadowColor: 'rgba(255,255,255,0.7)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 2,
+  },
+  starOutline: {
+    color: '#fff',
+    textShadowColor: '#fff',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 0,
+    fontWeight: '400',
   },
   companyNameText: {
     fontSize: 13,
@@ -1194,6 +1282,23 @@ const styles = StyleSheet.create({
     color: '#00ff88',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  disclaimerSection: {
+    paddingHorizontal: 15,
+    paddingVertical: 20,
+    marginTop: 10,
+  },
+  disclaimerTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#cbd5e1',
+    marginBottom: 8,
+  },
+  disclaimerText: {
+    fontSize: 11,
+    color: '#cbd5e1',
+    lineHeight: 16,
+    marginBottom: 8,
   },
 });
 

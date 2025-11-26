@@ -5,6 +5,13 @@ $AvdName = "Medium_Phone_API_36.1"
 Write-Host "Switching to project folder..." -ForegroundColor Cyan
 Set-Location $ProjectPath
 
+# Start backend server in a new PowerShell window
+Write-Host "Starting backend server..." -ForegroundColor Cyan
+Start-Process powershell -ArgumentList "-NoExit", "-Command cd '$ProjectPath\backend'; node server.js"
+
+# Give backend a moment to start
+Start-Sleep -Seconds 2
+
 # Start Metro in a new PowerShell window
 Write-Host "Starting Metro bundler (reset cache)..." -ForegroundColor Cyan
 Start-Process powershell -ArgumentList "-NoExit", "-Command cd '$ProjectPath'; npx.cmd react-native start --reset-cache"

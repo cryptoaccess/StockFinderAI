@@ -14,7 +14,7 @@ git init
 git add .
 
 # Create initial commit
-git commit -m "StockfinderAI automates stock research and find the best stocks to buy""
+git commit -m "StockfinderAI automates stock research and find the best stocks to buy"
 
 Write-Host "`nGit repository initialized successfully!" -ForegroundColor Green
 Write-Host "`nNext steps:" -ForegroundColor Yellow

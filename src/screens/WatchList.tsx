@@ -190,6 +190,20 @@ const WatchList: React.FC = () => {
           contentContainerStyle={styles.listContainer}
           refreshing={loading}
           onRefresh={loadWatchList}
+          ListFooterComponent={
+            <View style={styles.disclaimerSection}>
+              <Text style={styles.disclaimerTitle}>Disclaimer:</Text>
+              <Text style={styles.disclaimerText}>
+                This app provides financial data and analysis for general informational purposes only. It does not provide investment, financial, legal, or tax advice, and nothing contained in the app should be interpreted as a recommendation to buy, sell, or hold any securities. Market data and information may be delayed, inaccurate, or incomplete. The developers and publishers of this app make no guarantees regarding the accuracy, timeliness, or reliability of any content.
+              </Text>
+              <Text style={styles.disclaimerText}>
+                You are solely responsible for evaluating your own investment decisions, and you agree that the developers are not liable for any losses, damages, or consequences arising from the use of this app or reliance on its information.
+              </Text>
+              <Text style={styles.disclaimerText}>
+                All rights reserved. © 2025, Malachi J. King
+              </Text>
+            </View>
+          }
         />
       )}
     </View>
@@ -333,6 +347,23 @@ const styles = StyleSheet.create({
   starIcon: {
     fontSize: 24,
     color: '#ffffff',
+  },
+  disclaimerSection: {
+    paddingHorizontal: 15,
+    paddingVertical: 20,
+    marginTop: 10,
+  },
+  disclaimerTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#cbd5e1',
+    marginBottom: 8,
+  },
+  disclaimerText: {
+    fontSize: 11,
+    color: '#cbd5e1',
+    lineHeight: 16,
+    marginBottom: 8,
   },
 });
 

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CongressTradesService from '../services/CongressTradesService';
 
 /**
  * Congress Trades Screen
@@ -42,6 +43,7 @@ interface TradeListing {
   transactionType: string; // 'Purchase', 'Sale', etc.
   transactionDate: string;
   amount: string;
+  person?: string; // 'Spouse', 'Self', 'Child', etc.
   link?: string;
   chamber: string; // 'House' or 'Senate'
 }
@@ -65,6 +67,10 @@ export default function CongressTrades({ navigation }: any) {
   const [saleCount, setSaleCount] = useState(0);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [watchList, setWatchList] = useState<Array<{symbol: string, name: string}>>([]);
+  const [demCount, setDemCount] = useState(0);
+  const [gopCount, setGopCount] = useState(0);
+  const [mostBoughtStocks, setMostBoughtStocks] = useState<string>('');
+  const [mostSoldStocks, setMostSoldStocks] = useState<string>('');
 
   const toggleCard = (cardId: string) => {
     setExpandedCards(prev => {
@@ -110,25 +116,17 @@ export default function CongressTrades({ navigation }: any) {
   const loadTrades = async () => {
     setLoading(true);
     try {
-      console.log('Fetching congressional trades from local API...');
+      console.log('Loading congressional trades...');
       
-      // Call our local Node.js backend API
-      // DEPLOYMENT NOTE: For real devices, replace this URL with your deployed backend URL
-      // Android emulator: use 10.0.2.2 instead of localhost
-      // iOS simulator: use localhost
-      // Real device: use deployed URL (e.g., https://your-app.onrender.com/api/trades)
-      const apiUrl = 'http://10.0.2.2:3001/api/trades';
+      // Use the service to get trades (will use cached data if available)
+      const tradesData = await CongressTradesService.getTrades();
       
-      const response = await axios.get(apiUrl, {
-        timeout: 60000, // 60 second timeout since scraping takes time
-      });
+      console.log(`Received ${tradesData.length} trades`);
       
-      console.log(`Received ${response.data.length} trades from API`);
-      
-      if (Array.isArray(response.data) && response.data.length > 0) {
-        setTrades(response.data);
-        groupTradesByRepresentative(response.data);
-        updateTradeCounts(response.data);
+      if (tradesData.length > 0) {
+        setTrades(tradesData);
+        groupTradesByRepresentative(tradesData);
+        updateTradeCounts(tradesData);
         setLoading(false);
         return;
       }
@@ -202,13 +200,6 @@ export default function CongressTrades({ navigation }: any) {
       groupTradesByRepresentative(mockTrades);
     } catch (error) {
       console.log('Error loading trades:', error);
-      if (axios.isAxiosError(error)) {
-        console.log('Axios error details:', {
-          message: error.message,
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-        });
-      }
       
       // Fallback to mock data
       const mockTrades: TradeListing[] = [
@@ -239,6 +230,38 @@ export default function CongressTrades({ navigation }: any) {
     const sales = allTrades.filter(t => t.transactionType.toLowerCase().includes('sale')).length;
     setPurchaseCount(purchases);
     setSaleCount(sales);
+    
+    // Calculate most popular stocks
+    const purchaseTickers = allTrades
+      .filter(t => t.transactionType.toLowerCase().includes('purchase'))
+      .map(t => t.ticker);
+    const saleTickers = allTrades
+      .filter(t => t.transactionType.toLowerCase().includes('sale'))
+      .map(t => t.ticker);
+    
+    const getTopStocks = (tickers: string[], count: number = 3) => {
+      const tickerCounts = tickers.reduce((acc, ticker) => {
+        acc[ticker] = (acc[ticker] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      return Object.entries(tickerCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, count)
+        .map(([ticker]) => ticker)
+        .join(', ');
+    };
+    
+    setMostBoughtStocks(getTopStocks(purchaseTickers));
+    setMostSoldStocks(getTopStocks(saleTickers));
+  };
+  
+  const updatePartyCounts = (allTrades: TradeListing[]) => {
+    // Count unique politicians by party from ALL trades (not filtered)
+    const uniqueDems = new Set(allTrades.filter(t => t.party === 'D').map(t => t.representative));
+    const uniqueGOP = new Set(allTrades.filter(t => t.party === 'R').map(t => t.representative));
+    setDemCount(uniqueDems.size);
+    setGopCount(uniqueGOP.size);
   };
 
   const groupTradesByRepresentative = (allTrades: TradeListing[]) => {
@@ -264,14 +287,27 @@ export default function CongressTrades({ navigation }: any) {
     
     // Convert to array and sort each representative's trades
     const groupedArray = Array.from(grouped.values()).map((group) => {
-      // Sort trades within each group by date (most recent first)
+      // Sort trades within each group by amount (largest first), then alphabetically by ticker
       group.trades.sort((a: TradeListing, b: TradeListing) => {
-        const parseDate = (dateStr: string) => {
-          const parts = dateStr.split('/');
-          if (parts.length !== 3) return new Date(0);
-          return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+        // Extract numeric value from amount range (e.g., "$1,000,001 - $5,000,000" -> 5000000)
+        const getMaxAmount = (amountStr: string) => {
+          const match = amountStr.match(/\$([0-9,]+)\s*-\s*\$([0-9,]+)/);
+          if (match) {
+            return parseInt(match[2].replace(/,/g, ''));
+          }
+          return 0;
         };
-        return parseDate(b.transactionDate).getTime() - parseDate(a.transactionDate).getTime();
+        
+        const amountA = getMaxAmount(a.amount);
+        const amountB = getMaxAmount(b.amount);
+        
+        // First sort by amount (largest first)
+        if (amountB !== amountA) {
+          return amountB - amountA;
+        }
+        
+        // If amounts are equal, sort alphabetically by ticker
+        return a.ticker.localeCompare(b.ticker);
       });
       return group;
     });
@@ -301,12 +337,25 @@ export default function CongressTrades({ navigation }: any) {
       : trades.filter(t => t.party === selectedParty);
     groupTradesByRepresentative(filtered);
     updateTradeCounts(filtered);
+    // Always update party counts from the full trades array
+    updatePartyCounts(trades);
   }, [selectedParty, trades]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadTrades();
-    setRefreshing(false);
+    try {
+      // Force refresh from API
+      const tradesData = await CongressTradesService.refreshTrades();
+      if (tradesData.length > 0) {
+        setTrades(tradesData);
+        groupTradesByRepresentative(tradesData);
+        updateTradeCounts(tradesData);
+      }
+    } catch (error) {
+      console.log('Error refreshing trades:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const getPartyEmoji = (party: string) => {
@@ -379,7 +428,10 @@ export default function CongressTrades({ navigation }: any) {
                   return (
                   <View key={`purchase-${index}`} style={styles.detailRow}>
                     <View style={styles.detailRowHeader}>
-                      <Text style={styles.detailDate}>Date: {trade.transactionDate}</Text>
+                      <View style={styles.dateWithType}>
+                        <Text style={[styles.detailType, { color: '#22c55e' }]}>{trade.transactionType}</Text>
+                        <Text style={styles.detailDate}> - {trade.transactionDate}{trade.person ? ` (${trade.person})` : ''}</Text>
+                      </View>
                       <View style={styles.tickerWithStar}>
                         <Text style={styles.detailTicker}>{trade.ticker}</Text>
                         <TouchableOpacity 
@@ -391,10 +443,9 @@ export default function CongressTrades({ navigation }: any) {
                       </View>
                     </View>
                     <View style={styles.detailRowBody}>
-                      <Text style={[styles.detailType, { color: '#22c55e' }]}>{trade.transactionType}</Text>
                       <Text style={styles.detailAmount}>{trade.amount}</Text>
+                      <Text style={styles.detailCompany} numberOfLines={1} ellipsizeMode="tail">{trade.assetDescription}</Text>
                     </View>
-                    <Text style={styles.detailCompany}>{trade.assetDescription}</Text>
                   </View>
                   );
                 })}
@@ -409,7 +460,10 @@ export default function CongressTrades({ navigation }: any) {
                   return (
                   <View key={`sale-${index}`} style={styles.detailRow}>
                     <View style={styles.detailRowHeader}>
-                      <Text style={styles.detailDate}>Date: {trade.transactionDate}</Text>
+                      <View style={styles.dateWithType}>
+                        <Text style={[styles.detailType, { color: '#ef4444' }]}>{trade.transactionType}</Text>
+                        <Text style={styles.detailDate}> - {trade.transactionDate}{trade.person ? ` (${trade.person})` : ''}</Text>
+                      </View>
                       <View style={styles.tickerWithStar}>
                         <Text style={styles.detailTicker}>{trade.ticker}</Text>
                         <TouchableOpacity 
@@ -421,10 +475,9 @@ export default function CongressTrades({ navigation }: any) {
                       </View>
                     </View>
                     <View style={styles.detailRowBody}>
-                      <Text style={[styles.detailType, { color: '#ef4444' }]}>{trade.transactionType}</Text>
                       <Text style={styles.detailAmount}>{trade.amount}</Text>
+                      <Text style={styles.detailCompany} numberOfLines={1} ellipsizeMode="tail">{trade.assetDescription}</Text>
                     </View>
-                    <Text style={styles.detailCompany}>{trade.assetDescription}</Text>
                   </View>
                   );
                 })}
@@ -440,7 +493,7 @@ export default function CongressTrades({ navigation }: any) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#00d4ff" />
-        <Text style={styles.loadingText}>Loading congressional trades...</Text>
+        <Text style={styles.loadingText}>Loading trades by U.S. Congress members...</Text>
       </View>
     );
   }
@@ -452,6 +505,14 @@ export default function CongressTrades({ navigation }: any) {
         <Text style={styles.subtitle}>
           During the last 30 days, there were {saleCount} sales and {purchaseCount} purchases of stock by these politicians or their family members.
         </Text>
+        {(mostBoughtStocks || mostSoldStocks) && (
+          <View style={styles.popularStocksContainer}>
+            <Text style={styles.popularStocksLabel}>Most Bought: </Text>
+            <Text style={[styles.popularStocksValue, { color: '#22c55e' }]} numberOfLines={1}>{mostBoughtStocks || 'N/A'}</Text>
+            <Text style={styles.popularStocksLabel}> | Most Sold: </Text>
+            <Text style={[styles.popularStocksValue, { color: '#ef4444' }]} numberOfLines={1}>{mostSoldStocks || 'N/A'}</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.filterContainer}>
@@ -468,7 +529,7 @@ export default function CongressTrades({ navigation }: any) {
           onPress={() => setSelectedParty('D')}
         >
           <Text style={[styles.filterText, selectedParty === 'D' && styles.filterTextActive]}>
-            🔵 Dems
+            🔵 Dems ({demCount})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -476,7 +537,7 @@ export default function CongressTrades({ navigation }: any) {
           onPress={() => setSelectedParty('R')}
         >
           <Text style={[styles.filterText, selectedParty === 'R' && styles.filterTextActive]}>
-            🔴 GOP
+            🔴 GOP ({gopCount})
           </Text>
         </TouchableOpacity>
       </View>
@@ -497,6 +558,22 @@ export default function CongressTrades({ navigation }: any) {
         ListEmptyComponent={
           !loading ? (
             <Text style={styles.emptyText}>No trades found</Text>
+          ) : null
+        }
+        ListFooterComponent={
+          !loading ? (
+            <View style={styles.disclaimerSection}>
+              <Text style={styles.disclaimerTitle}>Disclaimer:</Text>
+              <Text style={styles.disclaimerText}>
+                This app provides financial data and analysis for general informational purposes only. It does not provide investment, financial, legal, or tax advice, and nothing contained in the app should be interpreted as a recommendation to buy, sell, or hold any securities. Market data and information may be delayed, inaccurate, or incomplete. The developers and publishers of this app make no guarantees regarding the accuracy, timeliness, or reliability of any content.
+              </Text>
+              <Text style={styles.disclaimerText}>
+                You are solely responsible for evaluating your own investment decisions, and you agree that the developers are not liable for any losses, damages, or consequences arising from the use of this app or reliance on its information.
+              </Text>
+              <Text style={styles.disclaimerText}>
+                All rights reserved. © 2025, Malachi J. King
+              </Text>
+            </View>
           ) : null
         }
       />
@@ -539,6 +616,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 10,
     lineHeight: 20,
+  },
+  popularStocksContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    flexWrap: 'nowrap',
+  },
+  popularStocksLabel: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  popularStocksValue: {
+    fontSize: 11,
+    fontWeight: '600',
+    flexShrink: 1,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -589,6 +683,8 @@ const styles = StyleSheet.create({
   detailRow: {
     backgroundColor: 'rgba(0, 212, 255, 0.05)',
     padding: 12,
+    paddingTop: 1,
+    paddingBottom: 8,
     borderRadius: 8,
     marginBottom: 8,
     borderLeftWidth: 3,
@@ -599,6 +695,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
+  },
+  dateWithType: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   detailDate: {
     fontSize: 12,
@@ -612,20 +712,22 @@ const styles = StyleSheet.create({
   tickerWithStar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   starIcon: {
-    padding: 2,
+    padding: 0,
+    marginTop: -2,
   },
   starText: {
-    fontSize: 18,
+    fontSize: 22,
     color: '#ffffff',
+    lineHeight: 22,
   },
   detailRowBody: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 0,
   },
   detailType: {
     fontSize: 14,
@@ -634,10 +736,14 @@ const styles = StyleSheet.create({
   detailAmount: {
     fontSize: 13,
     color: '#cbd5e1',
+    minWidth: 150,
   },
   detailCompany: {
+    flex: 1,
     fontSize: 13,
     color: '#94a3b8',
+    textAlign: 'right',
+    marginLeft: 8,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -750,5 +856,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     marginTop: 40,
+  },
+  disclaimerSection: {
+    paddingHorizontal: 15,
+    paddingVertical: 20,
+    marginTop: 10,
+  },
+  disclaimerTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#cbd5e1',
+    marginBottom: 8,
+  },
+  disclaimerText: {
+    fontSize: 11,
+    color: '#cbd5e1',
+    lineHeight: 16,
+    marginBottom: 8,
   },
 });
