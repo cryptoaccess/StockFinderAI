@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Linking,
 } from 'react-native';
+import { useRoute, useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CongressTradesService from '../services/CongressTradesService';
@@ -58,15 +59,20 @@ interface GroupedTrade {
 }
 
 export default function CongressTrades({ navigation }: any) {
+  const route = useRoute();
+  // @ts-ignore
+  const { preSelectedSymbol } = route.params || {};
   const [trades, setTrades] = useState<TradeListing[]>([]);
   const [groupedTrades, setGroupedTrades] = useState<GroupedTrade[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedParty, setSelectedParty] = useState<'All' | 'D' | 'R'>('All');
+  const [selectedTransactionType, setSelectedTransactionType] = useState<'All' | 'Purchase' | 'Sale'>('All');
   const [purchaseCount, setPurchaseCount] = useState(0);
   const [saleCount, setSaleCount] = useState(0);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [watchList, setWatchList] = useState<Array<{symbol: string, name: string}>>([]);
+  const [symbolList, setSymbolList] = useState<Array<{symbol: string, name: string}>>([]);
   const [demCount, setDemCount] = useState(0);
   const [gopCount, setGopCount] = useState(0);
   const [mostBoughtStocks, setMostBoughtStocks] = useState<string>('');
@@ -89,6 +95,11 @@ export default function CongressTrades({ navigation }: any) {
       const saved = await AsyncStorage.getItem('watchList');
       if (saved) {
         setWatchList(JSON.parse(saved));
+      }
+      // Also load symbol list for stock search
+      const cachedSymbols = await AsyncStorage.getItem('stockSymbolList');
+      if (cachedSymbols) {
+        setSymbolList(JSON.parse(cachedSymbols));
       }
     } catch (error) {
       console.error('Error loading watchlist:', error);
@@ -330,16 +341,43 @@ export default function CongressTrades({ navigation }: any) {
     loadWatchList();
   }, []);
 
+  // Auto-expand card for preSelectedSymbol
+  useEffect(() => {
+    if (preSelectedSymbol && groupedTrades.length > 0) {
+      // Find the card that contains this symbol
+      const cardWithSymbol = groupedTrades.find(group => 
+        group.trades.some(trade => trade.ticker === preSelectedSymbol)
+      );
+      if (cardWithSymbol) {
+        setExpandedCards(new Set([cardWithSymbol.id]));
+      }
+    }
+  }, [preSelectedSymbol, groupedTrades]);
+
   useEffect(() => {
     // Re-group when filter changes
-    const filtered = selectedParty === 'All' 
+    let filtered = selectedParty === 'All' 
       ? trades 
       : trades.filter(t => t.party === selectedParty);
+    
+    // Apply transaction type filter
+    if (selectedTransactionType !== 'All') {
+      filtered = filtered.filter(t => {
+        const type = t.transactionType?.toLowerCase() || '';
+        if (selectedTransactionType === 'Purchase') {
+          return type.includes('purchase') || type.includes('buy');
+        } else if (selectedTransactionType === 'Sale') {
+          return type.includes('sale') || type.includes('sell');
+        }
+        return true;
+      });
+    }
+    
     groupTradesByRepresentative(filtered);
     updateTradeCounts(filtered);
     // Always update party counts from the full trades array
     updatePartyCounts(trades);
-  }, [selectedParty, trades]);
+  }, [selectedParty, selectedTransactionType, trades]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -433,7 +471,9 @@ export default function CongressTrades({ navigation }: any) {
                         <Text style={styles.detailDate}> - {trade.transactionDate}{trade.person ? ` (${trade.person})` : ''}</Text>
                       </View>
                       <View style={styles.tickerWithStar}>
-                        <Text style={styles.detailTicker}>{trade.ticker}</Text>
+                        <TouchableOpacity onPress={() => navigation.navigate('StockSearch', { preSelectedSymbol: trade.ticker, symbolList })}>
+                          <Text style={styles.detailTicker}>{trade.ticker}</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity 
                           onPress={() => toggleWatchListStock(trade.ticker, trade.assetDescription)}
                           style={styles.starIcon}
@@ -465,7 +505,9 @@ export default function CongressTrades({ navigation }: any) {
                         <Text style={styles.detailDate}> - {trade.transactionDate}{trade.person ? ` (${trade.person})` : ''}</Text>
                       </View>
                       <View style={styles.tickerWithStar}>
-                        <Text style={styles.detailTicker}>{trade.ticker}</Text>
+                        <TouchableOpacity onPress={() => navigation.navigate('StockSearch', { preSelectedSymbol: trade.ticker, symbolList })}>
+                          <Text style={styles.detailTicker}>{trade.ticker}</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity 
                           onPress={() => toggleWatchListStock(trade.ticker, trade.assetDescription)}
                           style={styles.starIcon}
@@ -506,11 +548,79 @@ export default function CongressTrades({ navigation }: any) {
           During the last 30 days, there were {saleCount} sales and {purchaseCount} purchases of stock by these politicians or their family members.
         </Text>
         {(mostBoughtStocks || mostSoldStocks) && (
-          <View style={styles.popularStocksContainer}>
-            <Text style={styles.popularStocksLabel}>Most Bought: </Text>
-            <Text style={[styles.popularStocksValue, { color: '#22c55e' }]} numberOfLines={1}>{mostBoughtStocks || 'N/A'}</Text>
-            <Text style={styles.popularStocksLabel}> | Most Sold: </Text>
-            <Text style={[styles.popularStocksValue, { color: '#ef4444' }]} numberOfLines={1}>{mostSoldStocks || 'N/A'}</Text>
+          <View style={[styles.popularStocksContainer, { flexWrap: 'wrap', flexDirection: 'column', alignItems: 'flex-start' }]}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+              <TouchableOpacity 
+                onPress={() => setSelectedTransactionType(selectedTransactionType === 'Purchase' ? 'All' : 'Purchase')}
+                style={[
+                  styles.transactionFilterButton,
+                  selectedTransactionType === 'Purchase' && styles.transactionFilterButtonActivePurchase
+                ]}
+              >
+                <Text style={[
+                  styles.transactionFilterButtonText,
+                  { color: '#22c55e' },
+                  selectedTransactionType === 'Purchase' && styles.transactionFilterButtonTextActivePurchase
+                ]}>Most Bought:</Text>
+              </TouchableOpacity>
+              {(() => {
+                // Calculate ticker counts for Most Bought (filtered by party)
+                const tickerCounts: Record<string, number> = {};
+                const filteredTrades = selectedParty === 'All' ? trades : trades.filter(t => t.party === selectedParty);
+                filteredTrades.filter(t => {
+                  const type = t.transactionType?.toLowerCase() || '';
+                  return type.includes('purchase') || type.includes('buy');
+                }).forEach(t => {
+                  tickerCounts[t.ticker] = (tickerCounts[t.ticker] || 0) + 1;
+                });
+                const topTickers = Object.entries(tickerCounts)
+                  .sort((a, b) => (b[1] as number) - (a[1] as number))
+                  .slice(0, 3) as [string, number][];
+                return topTickers.length > 0 ? topTickers.map(([ticker, count], i) => (
+                  <TouchableOpacity key={ticker} onPress={() => navigation.navigate('StockSearch', { preSelectedSymbol: ticker, symbolList })}>
+                    <Text style={[styles.popularStocksValue, { color: '#22c55e' }]}>
+                      {' '}{ticker} ({count}){i < topTickers.length - 1 ? ', ' : ''}
+                    </Text>
+                  </TouchableOpacity>
+                )) : <Text style={[styles.popularStocksValue, { color: '#22c55e' }]}> N/A</Text>;
+              })()}
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 2 }}>
+              <TouchableOpacity 
+                onPress={() => setSelectedTransactionType(selectedTransactionType === 'Sale' ? 'All' : 'Sale')}
+                style={[
+                  styles.transactionFilterButton,
+                  selectedTransactionType === 'Sale' && styles.transactionFilterButtonActiveSale
+                ]}
+              >
+                <Text style={[
+                  styles.transactionFilterButtonText,
+                  { color: '#ef4444' },
+                  selectedTransactionType === 'Sale' && styles.transactionFilterButtonTextActiveSale
+                ]}>Most Sold:</Text>
+              </TouchableOpacity>
+              {(() => {
+                // Calculate ticker counts for Most Sold (filtered by party)
+                const tickerCounts: Record<string, number> = {};
+                const filteredTrades = selectedParty === 'All' ? trades : trades.filter(t => t.party === selectedParty);
+                filteredTrades.filter(t => {
+                  const type = t.transactionType?.toLowerCase() || '';
+                  return type.includes('sale') || type.includes('sell');
+                }).forEach(t => {
+                  tickerCounts[t.ticker] = (tickerCounts[t.ticker] || 0) + 1;
+                });
+                const topTickers = Object.entries(tickerCounts)
+                  .sort((a, b) => (b[1] as number) - (a[1] as number))
+                  .slice(0, 3) as [string, number][];
+                return topTickers.length > 0 ? topTickers.map(([ticker, count], i) => (
+                  <TouchableOpacity key={ticker} onPress={() => navigation.navigate('StockSearch', { preSelectedSymbol: ticker, symbolList })}>
+                    <Text style={[styles.popularStocksValue, { color: '#ef4444' }]}>
+                      {' '}{ticker} ({count}){i < topTickers.length - 1 ? ', ' : ''}
+                    </Text>
+                  </TouchableOpacity>
+                )) : <Text style={[styles.popularStocksValue, { color: '#ef4444' }]}> N/A</Text>;
+              })()}
+            </View>
           </View>
         )}
       </View>
@@ -518,7 +628,10 @@ export default function CongressTrades({ navigation }: any) {
       <View style={styles.filterContainer}>
         <TouchableOpacity
           style={[styles.filterButton, selectedParty === 'All' && styles.filterButtonActive]}
-          onPress={() => setSelectedParty('All')}
+          onPress={() => {
+            setSelectedParty('All');
+            setSelectedTransactionType('All');
+          }}
         >
           <Text style={[styles.filterText, selectedParty === 'All' && styles.filterTextActive]}>
             All
@@ -629,10 +742,44 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontWeight: '500',
   },
+  popularStocksLabelActive: {
+    color: '#00d4ff',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
   popularStocksValue: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
     flexShrink: 1,
+  },
+  transactionFilterButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#334155',
+    backgroundColor: '#1e293b',
+    marginRight: 6,
+  },
+  transactionFilterButtonActivePurchase: {
+    backgroundColor: '#22c55e',
+    borderColor: '#22c55e',
+  },
+  transactionFilterButtonActiveSale: {
+    backgroundColor: '#ef4444',
+    borderColor: '#ef4444',
+  },
+  transactionFilterButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  transactionFilterButtonTextActivePurchase: {
+    color: '#0f172a',
+    fontWeight: '700',
+  },
+  transactionFilterButtonTextActiveSale: {
+    color: '#ffffff',
+    fontWeight: '700',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -712,7 +859,7 @@ const styles = StyleSheet.create({
   tickerWithStar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
   },
   starIcon: {
     padding: 0,

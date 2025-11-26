@@ -23,11 +23,7 @@
 
 ### ⏳ TODO - Phase 3: App Store Publishing
 
-#### 1. Developer Accounts (Required)
-- [ ] Apple Developer Program: $99/year - https://developer.apple.com/programs/
-- [ ] Google Play Console: $25 one-time - https://play.google.com/console/signup
-
-#### 2. App Assets Needed
+#### 1. App Assets Needed
 **App Icon:**
 - [ ] Create 1024x1024px icon
 - [ ] Use https://appicon.co/ to generate all sizes
@@ -46,6 +42,10 @@
 3. AI Picks screen
 4. Blue Chip Dips screen
 5. Watch List screen
+
+#### 2. Developer Accounts (Required)
+- [ ] Apple Developer Program: $99/year - https://developer.apple.com/programs/
+- [ ] Google Play Console: $25 one-time - https://play.google.com/console/signup
 
 #### 3. iOS App Store Submission
 **Build Steps:**

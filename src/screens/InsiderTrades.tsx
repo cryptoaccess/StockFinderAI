@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
+import { useRoute, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import InsiderTradesService from '../services/InsiderTradesService';
 
@@ -40,6 +41,9 @@ interface GroupedInsiderTrade {
 }
 
 export default function InsiderTrades({ navigation }: any) {
+  const route = useRoute();
+  // @ts-ignore
+  const { preSelectedSymbol } = route.params || {};
     // Calculate the time span of all trades
     const getTradeTimeSpan = () => {
       if (!trades || trades.length === 0) return null;
@@ -264,6 +268,19 @@ export default function InsiderTrades({ navigation }: any) {
     loadWatchList();
     loadTrades();
   }, []);
+
+  // Auto-expand card for preSelectedSymbol
+  useEffect(() => {
+    if (preSelectedSymbol && groupedTrades.length > 0) {
+      // Find the card that contains this symbol
+      const cardWithSymbol = groupedTrades.find(group => 
+        group.ticker === preSelectedSymbol
+      );
+      if (cardWithSymbol) {
+        setExpandedCards(new Set([cardWithSymbol.id]));
+      }
+    }
+  }, [preSelectedSymbol, groupedTrades]);
 
   const onRefresh = async () => {
     setRefreshing(true);

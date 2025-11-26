@@ -34,6 +34,10 @@ interface StockPick {
   hasInsiderPurchases: boolean;
   congressPurchaseCount: number;
   insiderPurchaseCount: number;
+  hasCongressSales: boolean;
+  hasInsiderSales: boolean;
+  congressSaleCount: number;
+  insiderSaleCount: number;
   mostRecentCongressDate?: Date;
   mostRecentInsiderDate?: Date;
   hasPriceDip: boolean;
@@ -221,10 +225,15 @@ export default function AIPicks({ navigation }: any) {
 
       console.log(`Received ${congressTrades.length} congress trades, ${insiderTrades.length} insider trades`);
 
-      // Get unique tickers from purchases only
+      // Separate purchases and sales
       const congressPurchases = congressTrades.filter(t => {
         const type = t.transactionType?.toLowerCase() || '';
         return type.includes('purchase') || type.includes('buy');
+      });
+
+      const congressSales = congressTrades.filter(t => {
+        const type = t.transactionType?.toLowerCase() || '';
+        return type.includes('sale') || type.includes('sell');
       });
 
       const insiderPurchases = insiderTrades.filter(t => {
@@ -232,10 +241,17 @@ export default function AIPicks({ navigation }: any) {
         return type.includes('purchase') || type.includes('buy');
       });
 
-      // Count purchases by ticker and track most recent purchase date
+      const insiderSales = insiderTrades.filter(t => {
+        const type = t.transactionType?.toLowerCase() || '';
+        return type.includes('sale') || type.includes('sell');
+      });
+
+      // Count purchases and sales by ticker and track most recent dates
       const tickerData: Record<string, { 
-        congressCount: number, 
-        insiderCount: number, 
+        congressCount: number,
+        congressSaleCount: number,
+        insiderCount: number,
+        insiderSaleCount: number,
         companyName: string,
         mostRecentDate: Date,
         mostRecentCongressDate?: Date,
@@ -245,8 +261,10 @@ export default function AIPicks({ navigation }: any) {
       congressPurchases.forEach(t => {
         if (!tickerData[t.ticker]) {
           tickerData[t.ticker] = { 
-            congressCount: 0, 
-            insiderCount: 0, 
+            congressCount: 0,
+            congressSaleCount: 0,
+            insiderCount: 0,
+            insiderSaleCount: 0,
             companyName: t.assetDescription || t.ticker,
             mostRecentDate: new Date(0)
           };
@@ -270,8 +288,10 @@ export default function AIPicks({ navigation }: any) {
       insiderPurchases.forEach(t => {
         if (!tickerData[t.ticker]) {
           tickerData[t.ticker] = { 
-            congressCount: 0, 
-            insiderCount: 0, 
+            congressCount: 0,
+            congressSaleCount: 0,
+            insiderCount: 0,
+            insiderSaleCount: 0,
             companyName: t.companyName || t.ticker,
             mostRecentDate: new Date(0)
           };
@@ -297,11 +317,48 @@ export default function AIPicks({ navigation }: any) {
         }
       });
 
+      // Track Congress sales
+      congressSales.forEach(t => {
+        if (!tickerData[t.ticker]) {
+          tickerData[t.ticker] = { 
+            congressCount: 0,
+            congressSaleCount: 0,
+            insiderCount: 0,
+            insiderSaleCount: 0,
+            companyName: t.assetDescription || t.ticker,
+            mostRecentDate: new Date(0)
+          };
+        }
+        tickerData[t.ticker].congressSaleCount++;
+      });
+
+      // Track Insider sales
+      insiderSales.forEach(t => {
+        if (!tickerData[t.ticker]) {
+          tickerData[t.ticker] = { 
+            congressCount: 0,
+            congressSaleCount: 0,
+            insiderCount: 0,
+            insiderSaleCount: 0,
+            companyName: t.companyName || t.ticker,
+            mostRecentDate: new Date(0)
+          };
+        }
+        tickerData[t.ticker].insiderSaleCount++;
+        
+        // Update company name if we have a better one from insider trades
+        if (t.companyName && t.companyName !== t.ticker) {
+          tickerData[t.ticker].companyName = t.companyName;
+        }
+      });
+
       // Create picks from ticker data
       const allPicks: StockPick[] = Object.keys(tickerData).map(ticker => {
         const data = tickerData[ticker];
         const hasCongressPurchases = data.congressCount > 0;
         const hasInsiderPurchases = data.insiderCount > 0;
+        const hasCongressSales = data.congressSaleCount > 0;
+        const hasInsiderSales = data.insiderSaleCount > 0;
 
         // Calculate score (higher is better)
         let score = 0;
@@ -329,6 +386,18 @@ export default function AIPicks({ navigation }: any) {
           reasons.push(`${data.insiderCount} Insider purchase${data.insiderCount > 1 ? 's' : ''}`);
         }
 
+        // Congress sales (negative 40 points each)
+        if (hasCongressSales) {
+          score -= data.congressSaleCount * 40;
+          reasons.push(`${data.congressSaleCount} Congress sale${data.congressSaleCount > 1 ? 's' : ''}`);
+        }
+
+        // Insider sales (negative 50 points each)
+        if (hasInsiderSales) {
+          score -= data.insiderSaleCount * 50;
+          reasons.push(`${data.insiderSaleCount} Insider sale${data.insiderSaleCount > 1 ? 's' : ''}`);
+        }
+
         return {
           id: ticker,
           ticker,
@@ -336,8 +405,12 @@ export default function AIPicks({ navigation }: any) {
           priceChange: 0,
           hasCongressPurchases,
           hasInsiderPurchases,
+          hasCongressSales,
+          hasInsiderSales,
           congressPurchaseCount: data.congressCount,
           insiderPurchaseCount: data.insiderCount,
+          congressSaleCount: data.congressSaleCount,
+          insiderSaleCount: data.insiderSaleCount,
           mostRecentCongressDate: data.mostRecentCongressDate,
           mostRecentInsiderDate: data.mostRecentInsiderDate,
           hasPriceDip: false,
@@ -442,25 +515,66 @@ export default function AIPicks({ navigation }: any) {
 
         <View style={styles.activityRow}>
           {item.hasInsiderPurchases && (
-            <View style={styles.badge}>
+            <TouchableOpacity 
+              style={styles.badge}
+              onPress={() => navigation.navigate('InsiderTrades', { 
+                preSelectedSymbol: item.ticker 
+              })}
+              activeOpacity={0.7}
+            >
               <Text style={[styles.badgeText, { color: '#22c55e' }]}>
-                {item.insiderPurchaseCount} Insider
+                {item.insiderPurchaseCount} Insider Buy
               </Text>
-            </View>
+            </TouchableOpacity>
+          )}
+          {item.hasInsiderSales && (
+            <TouchableOpacity 
+              style={[styles.badge, { borderColor: '#ef4444' }]}
+              onPress={() => navigation.navigate('InsiderTrades', { 
+                preSelectedSymbol: item.ticker 
+              })}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.badgeText, { color: '#ef4444' }]}>
+                {item.insiderSaleCount} Insider Sale
+              </Text>
+            </TouchableOpacity>
           )}
           {item.hasCongressPurchases && (
-            <View style={styles.badge}>
+            <TouchableOpacity 
+              style={styles.badge}
+              onPress={() => navigation.navigate('CongressTrades')}
+              activeOpacity={0.7}
+            >
               <Text style={[styles.badgeText, { color: '#3b82f6' }]}>
-                {item.congressPurchaseCount} Congress
+                {item.congressPurchaseCount} Congress Buy
               </Text>
-            </View>
+            </TouchableOpacity>
+          )}
+          {item.hasCongressSales && (
+            <TouchableOpacity 
+              style={[styles.badge, { borderColor: '#f97316' }]}
+              onPress={() => navigation.navigate('CongressTrades')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.badgeText, { color: '#f97316' }]}>
+                {item.congressSaleCount} Congress Sale
+              </Text>
+            </TouchableOpacity>
           )}
           {item.hasPriceDip && (
-            <View style={[styles.badge, { borderColor: '#fbbf24' }]}>
+            <TouchableOpacity 
+              style={[styles.badge, { borderColor: '#fbbf24' }]}
+              onPress={() => navigation.navigate('StockSearch', { 
+                preSelectedSymbol: item.ticker,
+                symbolList 
+              })}
+              activeOpacity={0.7}
+            >
               <Text style={[styles.badgeText, { color: '#fbbf24' }]}>
                 {Math.abs(item.dipPercentage!).toFixed(1)}% Dip
               </Text>
-            </View>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -571,7 +685,21 @@ export default function AIPicks({ navigation }: any) {
               </View>
 
               <View style={styles.subsection}>
-                <Text style={styles.subsectionTitle}>4. Price Dip Bonus (40-100 points)</Text>
+                <Text style={styles.subsectionTitle}>4. Insider Sales (-50 points each)</Text>
+                <Text style={styles.sectionText}>
+                  When insiders sell their stock, it can signal lack of confidence in future performance. Each insider sale subtracts 50 points from the score.
+                </Text>
+              </View>
+
+              <View style={styles.subsection}>
+                <Text style={styles.subsectionTitle}>5. Congress Sales (-40 points each)</Text>
+                <Text style={styles.sectionText}>
+                  Congressional stock sales are tracked and negatively impact the AI score. Each Congress member sale subtracts 40 points.
+                </Text>
+              </View>
+
+              <View style={styles.subsection}>
+                <Text style={styles.subsectionTitle}>6. Price Dip Bonus (40-100 points)</Text>
                 <Text style={styles.sectionText}>
                   Stocks with recent price dips get bonus points, making them buying opportunities:
                 </Text>
@@ -592,7 +720,7 @@ export default function AIPicks({ navigation }: any) {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Example Scoring</Text>
                 <Text style={styles.sectionText}>
-                  A stock with 2 insider purchases from 3 days ago, 1 Congress purchase, and a 3.5% dip from 2 days ago would score:
+                  A stock with 2 insider purchases, 1 insider sale, 1 Congress purchase, and a 3.5% dip from 2 days ago (3 days old) would score:
                 </Text>
                 <Text style={styles.sectionText}>
                   • Recency: 50 points (8-3)×10
@@ -601,20 +729,23 @@ export default function AIPicks({ navigation }: any) {
                   • Insider purchases: 100 points (2×50)
                 </Text>
                 <Text style={styles.sectionText}>
+                  • Insider sales: -50 points (1×-50)
+                </Text>
+                <Text style={styles.sectionText}>
                   • Congress purchases: 40 points (1×40)
                 </Text>
                 <Text style={styles.sectionText}>
                   • Price dip bonus: 70 points (3.5% dip, 2 days ago)
                 </Text>
                 <Text style={styles.sectionText}>
-                  • Total AI Score: 260 points
+                  • Total AI Score: 210 points
                 </Text>
               </View>
 
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Why This Matters</Text>
                 <Text style={styles.sectionText}>
-                  Insider and Congress purchases often precede positive price movements. Insiders have access to non-public information about their companies, and their purchases can signal confidence in future performance.
+                  Insider and Congress purchases often precede positive price movements. Conversely, sales can signal concerns about future performance. Insiders have access to non-public information about their companies, making their trading activity a valuable indicator.
                 </Text>
               </View>
             </ScrollView>
@@ -677,7 +808,7 @@ export default function AIPicks({ navigation }: any) {
                       • Insider Purchases ({selectedStock.insiderPurchaseCount})
                     </Text>
                     <Text style={styles.scoreComponentValue}>
-                      {selectedStock.insiderPurchaseCount * 50} pts
+                      +{selectedStock.insiderPurchaseCount * 50} pts
                     </Text>
                   </View>
                   {selectedStock.mostRecentInsiderDate && (
@@ -688,6 +819,19 @@ export default function AIPicks({ navigation }: any) {
                 </View>
               )}
               
+              {selectedStock?.hasInsiderSales && (
+                <View>
+                  <View style={styles.scoreComponentRow}>
+                    <Text style={styles.scoreComponentLabel}>
+                      • Insider Sales ({selectedStock.insiderSaleCount})
+                    </Text>
+                    <Text style={[styles.scoreComponentValue, { color: '#ef4444' }]}>
+                      -{selectedStock.insiderSaleCount * 50} pts
+                    </Text>
+                  </View>
+                </View>
+              )}
+              
               {selectedStock?.hasCongressPurchases && (
                 <View>
                   <View style={styles.scoreComponentRow}>
@@ -695,7 +839,7 @@ export default function AIPicks({ navigation }: any) {
                       • Congress Purchases ({selectedStock.congressPurchaseCount})
                     </Text>
                     <Text style={styles.scoreComponentValue}>
-                      {selectedStock.congressPurchaseCount * 40} pts
+                      +{selectedStock.congressPurchaseCount * 40} pts
                     </Text>
                   </View>
                   {selectedStock.mostRecentCongressDate && (
@@ -706,6 +850,19 @@ export default function AIPicks({ navigation }: any) {
                 </View>
               )}
               
+              {selectedStock?.hasCongressSales && (
+                <View>
+                  <View style={styles.scoreComponentRow}>
+                    <Text style={styles.scoreComponentLabel}>
+                      • Congress Sales ({selectedStock.congressSaleCount})
+                    </Text>
+                    <Text style={[styles.scoreComponentValue, { color: '#f97316' }]}>
+                      -{selectedStock.congressSaleCount * 40} pts
+                    </Text>
+                  </View>
+                </View>
+              )}
+              
               {selectedStock?.hasPriceDip && selectedStock.dipScore && (
                 <View>
                   <View style={styles.scoreComponentRow}>
@@ -713,7 +870,7 @@ export default function AIPicks({ navigation }: any) {
                       • Price Dip Bonus
                     </Text>
                     <Text style={styles.scoreComponentValue}>
-                      {Math.round(selectedStock.dipScore)} pts
+                      +{Math.round(selectedStock.dipScore)} pts
                     </Text>
                   </View>
                   <Text style={styles.dateRangeText}>
@@ -727,10 +884,12 @@ export default function AIPicks({ navigation }: any) {
                   • Recency Bonus
                 </Text>
                 <Text style={styles.scoreComponentValue}>
-                  {selectedStock ? Math.round(selectedStock.score - 
+                  +{selectedStock ? Math.round(selectedStock.score - 
                     (selectedStock.insiderPurchaseCount * 50) - 
-                    (selectedStock.congressPurchaseCount * 40) - 
-                    (selectedStock.dipScore || 0)) : 0} pts
+                    (selectedStock.congressPurchaseCount * 40) -
+                    (selectedStock.dipScore || 0) +
+                    (selectedStock.insiderSaleCount * 50) +
+                    (selectedStock.congressSaleCount * 40)) : 0} pts
                 </Text>
               </View>
             </View>
