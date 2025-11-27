@@ -523,7 +523,7 @@ export default function AIPicks({ navigation }: any) {
               activeOpacity={0.7}
             >
               <Text style={[styles.badgeText, { color: '#22c55e' }]}>
-                {item.insiderPurchaseCount} Insider Buy
+                {item.insiderPurchaseCount} Insider Buy{item.insiderPurchaseCount > 1 ? 's' : ''}
               </Text>
             </TouchableOpacity>
           )}
@@ -536,7 +536,7 @@ export default function AIPicks({ navigation }: any) {
               activeOpacity={0.7}
             >
               <Text style={[styles.badgeText, { color: '#ef4444' }]}>
-                {item.insiderSaleCount} Insider Sale
+                {item.insiderSaleCount} Insider Sale{item.insiderSaleCount > 1 ? 's' : ''}
               </Text>
             </TouchableOpacity>
           )}
@@ -547,7 +547,7 @@ export default function AIPicks({ navigation }: any) {
               activeOpacity={0.7}
             >
               <Text style={[styles.badgeText, { color: '#3b82f6' }]}>
-                {item.congressPurchaseCount} Congress Buy
+                {item.congressPurchaseCount} Congress Buy{item.congressPurchaseCount > 1 ? 's' : ''}
               </Text>
             </TouchableOpacity>
           )}
@@ -558,7 +558,7 @@ export default function AIPicks({ navigation }: any) {
               activeOpacity={0.7}
             >
               <Text style={[styles.badgeText, { color: '#f97316' }]}>
-                {item.congressSaleCount} Congress Sale
+                {item.congressSaleCount} Congress Sale{item.congressSaleCount > 1 ? 's' : ''}
               </Text>
             </TouchableOpacity>
           )}

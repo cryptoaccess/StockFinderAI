@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   Alert,
   StatusBar,
-  Share
+  Share,
+  Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
@@ -23,6 +24,7 @@ const screenWidth = Dimensions.get('window').width;
 
 const HomeScreen = () => {
   const navigation = useNavigation();
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   
   // Store the full dataset
   const [fullMarketData, setFullMarketData] = useState<{
@@ -288,10 +290,33 @@ const HomeScreen = () => {
   // Fetch data once when component loads
   useEffect(() => {
     console.log('Component mounted, fetching data...');
+    checkDisclaimerAcceptance(); // Check if disclaimer was accepted
     fetchAllMarketData(); // Full fetch on initial load
     fetchSymbolList(); // Fetch stock symbols for Stock Search
     preloadAIPicksData(); // Preload AI Picks data in background
   }, []);
+
+  // Check if user has accepted disclaimer
+  const checkDisclaimerAcceptance = async () => {
+    try {
+      const disclaimerAccepted = await AsyncStorage.getItem('disclaimerAccepted');
+      if (!disclaimerAccepted) {
+        setShowDisclaimerModal(true);
+      }
+    } catch (error) {
+      console.log('Error checking disclaimer acceptance:', error);
+    }
+  };
+
+  // Handle disclaimer acceptance
+  const handleAcceptDisclaimer = async () => {
+    try {
+      await AsyncStorage.setItem('disclaimerAccepted', 'true');
+      setShowDisclaimerModal(false);
+    } catch (error) {
+      console.log('Error saving disclaimer acceptance:', error);
+    }
+  };
 
   // Update display when time range changes (no API call, just slice existing data)
   useEffect(() => {
@@ -418,6 +443,35 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0a1929" />
+      
+      {/* Disclaimer Modal */}
+      <Modal
+        visible={showDisclaimerModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Important Disclaimer</Text>
+            <ScrollView style={styles.modalScroll}>
+              <Text style={styles.modalText}>
+                This app provides financial data and analysis for general informational purposes only. It does not provide investment, financial, legal, or tax advice, and nothing contained in the app should be interpreted as a recommendation to buy, sell, or hold any securities. Market data and information may be delayed, inaccurate, or incomplete. The developers and publishers of this app make no guarantees regarding the accuracy, timeliness, or reliability of any content.
+              </Text>
+              <Text style={styles.modalText}>
+                You are solely responsible for evaluating your own investment decisions, and you agree that the developers are not liable for any losses, damages, or consequences arising from the use of this app or reliance on its information.
+              </Text>
+            </ScrollView>
+            <TouchableOpacity 
+              style={styles.acceptButton} 
+              onPress={handleAcceptDisclaimer}
+            >
+              <Text style={styles.acceptButtonText}>I Accept</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Header */}
         <View style={styles.header}>
@@ -807,6 +861,52 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
     lineHeight: 16,
     marginBottom: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#0f172a',
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 212, 255, 0.5)',
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '70%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#00d4ff',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalScroll: {
+    maxHeight: 250,
+    marginBottom: 20,
+  },
+  modalText: {
+    fontSize: 13,
+    color: '#cbd5e1',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  acceptButton: {
+    backgroundColor: '#00d4ff',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    width: '100%',
+  },
+  acceptButtonText: {
+    color: '#0a1929',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

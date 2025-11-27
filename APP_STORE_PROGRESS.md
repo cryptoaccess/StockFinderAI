@@ -25,23 +25,24 @@
 
 #### 1. App Assets Needed
 **App Icon:**
-- [ ] Create 1024x1024px icon
-- [ ] Use https://appicon.co/ to generate all sizes
+- [x] Create 1024x1024px icon
+- [x] Use Android Studio Image Asset Studio to generate all sizes
 
 **Screenshots - iOS:**
 - [ ] 6.7" iPhone (1290 × 2796px) - 3-5 screenshots
 - [ ] 6.5" iPhone (1242 × 2688px) - 3-5 screenshots
 
 **Screenshots - Android:**
-- [ ] Phone screenshots (16:9 or 9:16, min 320px)
+- [x] Phone screenshots (1080x2400, 8 screenshots in screenshots/android/)
+  1. Home screen with market data
+  2. Watch List
+  3. Blue Chip Dips
+  4. Congress Trades
+  5. AI Picks
+  6. Stock Search
+  7. Insider Trades
+  8. Disclaimer Modal
 - [ ] Feature graphic (1024×500px) - required
-
-**Suggested Screenshots:**
-1. Home screen with market data
-2. Congress Trades screen
-3. AI Picks screen
-4. Blue Chip Dips screen
-5. Watch List screen
 
 #### 2. Developer Accounts (Required)
 - [ ] Apple Developer Program: $99/year - https://developer.apple.com/programs/
