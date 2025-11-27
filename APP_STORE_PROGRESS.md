@@ -29,8 +29,8 @@
 - [x] Use Android Studio Image Asset Studio to generate all sizes
 
 **Screenshots - iOS:**
-- [ ] 6.7" iPhone (1290 × 2796px) - 3-5 screenshots
-- [ ] 6.5" iPhone (1242 × 2688px) - 3-5 screenshots
+- [x] 6.7" iPhone (1290 × 2796px) - 8 screenshots in screenshots/ios-6.7/
+- [x] 6.5" iPhone (1242 × 2688px) - 8 screenshots in screenshots/ios-6.5/
 
 **Screenshots - Android:**
 - [x] Phone screenshots (1080x2400, 8 screenshots in screenshots/android/)
