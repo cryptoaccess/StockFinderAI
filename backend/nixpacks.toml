@@ -2,4 +2,4 @@
 aptPkgs = []
 
 [phases.install]
-cmds = ["npm ci --omit=dev"]
+cmds = ["npm ci --omit=dev --omit=optional"]
