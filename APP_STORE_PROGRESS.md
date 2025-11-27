@@ -42,7 +42,7 @@
   6. Stock Search
   7. Insider Trades
   8. Disclaimer Modal
-- [ ] Feature graphic (1024×500px) - required
+- [x] Feature graphic (1024×500px) - screenshots/android/feature-graphic.png
 
 #### 2. Developer Accounts (Required)
 - [ ] Apple Developer Program: $99/year - https://developer.apple.com/programs/
