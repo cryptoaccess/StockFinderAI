@@ -20,6 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import CongressTradesService from '../services/CongressTradesService';
 import InsiderTradesService from '../services/InsiderTradesService';
 
+const packageJson = require('../../package.json');
 const screenWidth = Dimensions.get('window').width;
 
 const HomeScreen = () => {
@@ -662,6 +663,9 @@ const HomeScreen = () => {
             <Text style={styles.disclaimerText}>
               © 2025. All rights reserved.
             </Text>
+            <Text style={styles.versionText}>
+              Version {packageJson.version}
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -912,6 +916,13 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
     lineHeight: 16,
     marginBottom: 8,
+  },
+  versionText: {
+    fontSize: 10,
+    color: '#64748b',
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   modalOverlay: {
     flex: 1,

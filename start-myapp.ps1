@@ -46,7 +46,8 @@ Write-Host "Device detected. Waiting for emulator boot completion..." -Foregroun
 $elapsed = 0
 while ($true) {
     Start-Sleep -Seconds 2
-    $boot = (& adb shell getprop sys.boot_completed 2>$null).Trim()
+    $boot = (& adb shell getprop sys.boot_completed 2>$null)
+    if ($boot) { $boot = $boot.Trim() }
     if ($boot -eq '1') { break }
     $elapsed += 2
     if ($elapsed -gt $maxWait) { Write-Host "Timeout waiting for emulator boot. Continuing anyway..." -ForegroundColor Yellow; break }

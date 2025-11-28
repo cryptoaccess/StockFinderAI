@@ -1,6 +1,6 @@
 {
-  "name": "MyReactNativeApp",
-  "version": "0.0.1",
+  "name": "stockfinderai",
+  "version": "0.7.1",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
