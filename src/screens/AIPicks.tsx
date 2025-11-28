@@ -644,7 +644,7 @@ export default function AIPicks({ navigation }: any) {
         <View style={styles.header}>
           <Text style={styles.title}>AI Picks</Text>
           <Text style={styles.subtitle}>
-            Blue-chip stocks and your Watch List stocks ranked by recent insider and Congress trading activity. Analysis includes the last 30 days of activity.
+            Blue-chip stocks and your Watch List stocks ranked by recent insider and Congress trading.
           </Text>
           <TouchableOpacity
             style={styles.rankingsButton}
@@ -666,7 +666,7 @@ export default function AIPicks({ navigation }: any) {
       <View style={styles.header}>
         <Text style={styles.title}>AI Picks</Text>
         <Text style={styles.subtitle}>
-          Blue-chip stocks and your Watch List stocks ranked by recent insider and Congress purchase activity. Data covers up to the last 30 days of activity.
+          Blue-chip stocks and your Watch List stocks ranked by recent insider and Congress purchases.
         </Text>
         <TouchableOpacity
           style={styles.rankingsButton}
@@ -703,7 +703,7 @@ export default function AIPicks({ navigation }: any) {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Stock Filtering</Text>
                 <Text style={styles.sectionText}>
-                  Only stocks from your blue-chip list and watch list are analyzed. This ensures you see opportunities in companies you're already interested in or have identified as quality investments.
+                  Only stocks from your blue-chip list and watch list are analyzed. This ensures you see opportunities in companies you're already interested in or have identified as quality investments. Data includes the previous 30 days of activity.
                 </Text>
               </View>
 
@@ -715,51 +715,35 @@ export default function AIPicks({ navigation }: any) {
               </View>
 
               <View style={styles.subsection}>
-                <Text style={styles.subsectionTitle}>1. Purchase Recency (0-70 points)</Text>
-                <Text style={styles.sectionText}>
-                  • Purchases within the last 7 days: 10-70 points (more recent = higher score)
-                </Text>
-                <Text style={styles.sectionText}>
-                  • Purchases 8-14 days ago: 10 points
-                </Text>
-                <Text style={styles.sectionText}>
-                  • Purchases 15-21 days ago: 5 points
-                </Text>
-                <Text style={styles.sectionText}>
-                  • Older purchases: 0 points
-                </Text>
-              </View>
-
-              <View style={styles.subsection}>
-                <Text style={styles.subsectionTitle}>2. Insider Purchases (50 points each)</Text>
+                <Text style={styles.subsectionTitle}>1. Insider Purchases (50 points each)</Text>
                 <Text style={styles.sectionText}>
                   Company insiders (executives, directors, major shareholders) buying their own stock signals strong confidence. Each insider purchase adds 50 points to the score.
                 </Text>
               </View>
 
               <View style={styles.subsection}>
-                <Text style={styles.subsectionTitle}>3. Congress Purchases (40 points each)</Text>
+                <Text style={styles.subsectionTitle}>2. Congress Purchases (40 points each)</Text>
                 <Text style={styles.sectionText}>
                   Members of Congress are required to disclose stock purchases. Each Congress member purchase adds 40 points.
                 </Text>
               </View>
 
               <View style={styles.subsection}>
-                <Text style={styles.subsectionTitle}>4. Insider Sales (-50 points each)</Text>
+                <Text style={styles.subsectionTitle}>3. Insider Sales (-50 points each)</Text>
                 <Text style={styles.sectionText}>
                   When insiders sell their stock, it can signal lack of confidence in future performance. Each insider sale subtracts 50 points from the score.
                 </Text>
               </View>
 
               <View style={styles.subsection}>
-                <Text style={styles.subsectionTitle}>5. Congress Sales (-40 points each)</Text>
+                <Text style={styles.subsectionTitle}>4. Congress Sales (-40 points each)</Text>
                 <Text style={styles.sectionText}>
                   Congressional stock sales are tracked and negatively impact the AI score. Each Congress member sale subtracts 40 points.
                 </Text>
               </View>
 
               <View style={styles.subsection}>
-                <Text style={styles.subsectionTitle}>6. Price Dip Bonus (40-100 points)</Text>
+                <Text style={styles.subsectionTitle}>5. Price Dip Bonus (40-100 points)</Text>
                 <Text style={styles.sectionText}>
                   Stocks with recent price dips get bonus points, making them buying opportunities:
                 </Text>
@@ -774,6 +758,22 @@ export default function AIPicks({ navigation }: any) {
                 </Text>
                 <Text style={styles.sectionText}>
                   • Combined scoring range: 40-100 points
+                </Text>
+              </View>
+
+              <View style={styles.subsection}>
+                <Text style={styles.subsectionTitle}>6. Purchase Recency (0-70 points)</Text>
+                <Text style={styles.sectionText}>
+                  • Purchases within the last 7 days: 10-70 points (more recent = higher score)
+                </Text>
+                <Text style={styles.sectionText}>
+                  • Purchases 8-14 days ago: 10 points
+                </Text>
+                <Text style={styles.sectionText}>
+                  • Purchases 15-21 days ago: 5 points
+                </Text>
+                <Text style={styles.sectionText}>
+                  • Older purchases: 0 points
                 </Text>
               </View>
 
