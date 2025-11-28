@@ -406,6 +406,8 @@ export default function AIPicks({ navigation }: any) {
           const recencyBonus = (8 - daysAgo) * 10; // 70 points for today, down to 10 for 7 days ago
           score += recencyBonus;
         } else if (daysAgo <= 14) {
+          score += 10;
+        } else if (daysAgo <= 21) {
           score += 5;
         }
 
@@ -718,7 +720,10 @@ export default function AIPicks({ navigation }: any) {
                   • Purchases within the last 7 days: 10-70 points (more recent = higher score)
                 </Text>
                 <Text style={styles.sectionText}>
-                  • Purchases 8-14 days ago: 5 points
+                  • Purchases 8-14 days ago: 10 points
+                </Text>
+                <Text style={styles.sectionText}>
+                  • Purchases 15-21 days ago: 5 points
                 </Text>
                 <Text style={styles.sectionText}>
                   • Older purchases: 0 points
@@ -769,31 +774,6 @@ export default function AIPicks({ navigation }: any) {
                 </Text>
                 <Text style={styles.sectionText}>
                   • Combined scoring range: 40-100 points
-                </Text>
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Example Scoring</Text>
-                <Text style={styles.sectionText}>
-                  A stock with 2 insider purchases, 1 insider sale, 1 Congress purchase, and a 3.5% dip from 2 days ago (3 days old) would score:
-                </Text>
-                <Text style={styles.sectionText}>
-                  • Recency: 50 points (8-3)×10
-                </Text>
-                <Text style={styles.sectionText}>
-                  • Insider purchases: 100 points (2×50)
-                </Text>
-                <Text style={styles.sectionText}>
-                  • Insider sales: -50 points (1×-50)
-                </Text>
-                <Text style={styles.sectionText}>
-                  • Congress purchases: 40 points (1×40)
-                </Text>
-                <Text style={styles.sectionText}>
-                  • Price dip bonus: 70 points (3.5% dip, 2 days ago)
-                </Text>
-                <Text style={styles.sectionText}>
-                  • Total AI Score: 210 points
                 </Text>
               </View>
 
