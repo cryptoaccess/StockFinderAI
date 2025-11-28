@@ -142,7 +142,7 @@ const WatchList: React.FC = () => {
                     Current: ${item.currentPrice.toFixed(2)}
                   </Text>
                   <Text style={[styles.changeText, { color: changeColor }]}>
-                    Change: {(item.change || 0) >= 0 ? '+' : ''}
+                    Today: {(item.change || 0) >= 0 ? '+' : ''}
                     {item.change?.toFixed(2)} ({(item.changePercent || 0) >= 0 ? '+' : ''}
                     {item.changePercent?.toFixed(1)}%)
                   </Text>
@@ -165,8 +165,10 @@ const WatchList: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.titleSection}>
-        <Text style={styles.screenTitle}>Watch List</Text>
-        <Text style={styles.subtitle}>Your starred stocks ({watchedStocks.length})</Text>
+        <Text style={styles.screenTitle}>Watch List ({watchedStocks.length})</Text>
+        <Text style={styles.subtitle}>
+          Tap stars to add or remove stocks from your watch list.
+        </Text>
       </View>
 
       <TouchableOpacity
