@@ -117,6 +117,43 @@ const HomeScreen = () => {
   const fetchAllMarketData = async () => {
     setLoading(true);
     try {
+      // Check cache first
+      const cachedData = await AsyncStorage.getItem('marketChartData');
+      const cacheTimestamp = await AsyncStorage.getItem('marketChartDataTimestamp');
+      
+      if (cachedData && cacheTimestamp) {
+        const hoursSinceCache = (Date.now() - parseInt(cacheTimestamp)) / (1000 * 60 * 60);
+        
+        // Use cache if less than 1 hour old
+        if (hoursSinceCache < 1) {
+          console.log('=== USING CACHED MARKET DATA ===');
+          const cached = JSON.parse(cachedData);
+          
+          setFullMarketData(cached.fullData);
+          setLastUpdate(cached.lastUpdate);
+          
+          // Update display for current time range
+          const numDays = parseInt(timeRange);
+          const slicedDow = cached.fullData.dow.prices.slice(-numDays);
+          const slicedSp500 = cached.fullData.sp500.prices.slice(-numDays);
+          const slicedNasdaq = cached.fullData.nasdaq.prices.slice(-numDays);
+          const slicedDates = cached.fullData.dow.dates.slice(-numDays);
+          
+          setDisplayData({
+            dow: slicedDow,
+            sp500: slicedSp500,
+            nasdaq: slicedNasdaq,
+          });
+          
+          const labels = generateLabels(slicedDates, timeRange);
+          setDateLabels(labels);
+          
+          setLoading(false);
+          console.log('=== LOADED FROM CACHE ===');
+          return;
+        }
+      }
+      
       console.log('=== FETCHING MARKET DATA FROM YAHOO FINANCE ===');
       
       // Fetch 3 months of data to support 90-day view
@@ -190,6 +227,20 @@ const HomeScreen = () => {
           minute: '2-digit'
         });
         setLastUpdate(formattedDateTime);
+        
+        // Cache the data
+        const fullData = {
+          dow: dowData,
+          sp500: sp500Data,
+          nasdaq: nasdaqData,
+        };
+        
+        await AsyncStorage.setItem('marketChartData', JSON.stringify({
+          fullData,
+          lastUpdate: formattedDateTime
+        }));
+        await AsyncStorage.setItem('marketChartDataTimestamp', Date.now().toString());
+        console.log('=== CACHED MARKET DATA ===');
         
         // IMPORTANT: Immediately update display for current time range
         const numDays = parseInt(timeRange);
