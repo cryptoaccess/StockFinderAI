@@ -210,7 +210,7 @@ const WatchList: React.FC = () => {
                 You are solely responsible for evaluating your own investment decisions, and you agree that the developers are not liable for any losses, damages, or consequences arising from the use of this app or reliance on its information.
               </Text>
               <Text style={styles.disclaimerText}>
-                All rights reserved. © 2025, Malachi J. King
+                © 2025. All rights reserved.
               </Text>
             </View>
           }

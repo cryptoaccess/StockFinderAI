@@ -45,8 +45,8 @@
 - [x] Feature graphic (1024×500px) - screenshots/android/feature-graphic.png
 
 #### 2. Developer Accounts (Required)
-- [ ] Apple Developer Program: $99/year - https://developer.apple.com/programs/
-- [ ] Google Play Console: $25 one-time - https://play.google.com/console/signup
+- [x] Apple Developer Program: $99/year - https://developer.apple.com/programs/
+- [x] Google Play Console: $25 one-time - https://play.google.com/console/signup
 
 #### 3. iOS App Store Submission
 **Build Steps:**

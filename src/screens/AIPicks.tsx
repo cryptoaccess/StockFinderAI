@@ -40,6 +40,8 @@ interface StockPick {
   insiderSaleCount: number;
   mostRecentCongressDate?: Date;
   mostRecentInsiderDate?: Date;
+  mostRecentCongressSaleDate?: Date;
+  mostRecentInsiderSaleDate?: Date;
   hasPriceDip: boolean;
   dipPercentage?: number;
   dipDaysAgo?: number;
@@ -255,7 +257,9 @@ export default function AIPicks({ navigation }: any) {
         companyName: string,
         mostRecentDate: Date,
         mostRecentCongressDate?: Date,
-        mostRecentInsiderDate?: Date
+        mostRecentInsiderDate?: Date,
+        mostRecentCongressSaleDate?: Date,
+        mostRecentInsiderSaleDate?: Date
       }> = {};
 
       congressPurchases.forEach(t => {
@@ -271,8 +275,15 @@ export default function AIPicks({ navigation }: any) {
         }
         tickerData[t.ticker].congressCount++;
         
-        // Track most recent purchase
-        const tradeDate = new Date(t.transactionDate);
+        // Parse MM/DD/YYYY format (Congress dates)
+        let tradeDate: Date;
+        if (t.transactionDate && t.transactionDate.includes('/')) {
+          const [month, day, year] = t.transactionDate.split('/');
+          tradeDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        } else {
+          tradeDate = new Date(t.transactionDate);
+        }
+        
         if (!isNaN(tradeDate.getTime()) && tradeDate > tickerData[t.ticker].mostRecentDate) {
           tickerData[t.ticker].mostRecentDate = tradeDate;
         }
@@ -330,6 +341,22 @@ export default function AIPicks({ navigation }: any) {
           };
         }
         tickerData[t.ticker].congressSaleCount++;
+        
+        // Parse MM/DD/YYYY format (Congress dates)
+        let tradeDate: Date;
+        if (t.transactionDate && t.transactionDate.includes('/')) {
+          const [month, day, year] = t.transactionDate.split('/');
+          tradeDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        } else {
+          tradeDate = new Date(t.transactionDate);
+        }
+        
+        // Track most recent Congress sale specifically
+        if (!isNaN(tradeDate.getTime())) {
+          if (!tickerData[t.ticker].mostRecentCongressSaleDate || tradeDate > tickerData[t.ticker].mostRecentCongressSaleDate!) {
+            tickerData[t.ticker].mostRecentCongressSaleDate = tradeDate;
+          }
+        }
       });
 
       // Track Insider sales
@@ -349,6 +376,14 @@ export default function AIPicks({ navigation }: any) {
         // Update company name if we have a better one from insider trades
         if (t.companyName && t.companyName !== t.ticker) {
           tickerData[t.ticker].companyName = t.companyName;
+        }
+        
+        // Track most recent Insider sale specifically
+        const tradeDate = new Date(t.transactionDate);
+        if (!isNaN(tradeDate.getTime())) {
+          if (!tickerData[t.ticker].mostRecentInsiderSaleDate || tradeDate > tickerData[t.ticker].mostRecentInsiderSaleDate!) {
+            tickerData[t.ticker].mostRecentInsiderSaleDate = tradeDate;
+          }
         }
       });
 
@@ -398,7 +433,7 @@ export default function AIPicks({ navigation }: any) {
           reasons.push(`${data.insiderSaleCount} Insider sale${data.insiderSaleCount > 1 ? 's' : ''}`);
         }
 
-        return {
+        const stockPick = {
           id: ticker,
           ticker,
           companyName: data.companyName,
@@ -413,10 +448,14 @@ export default function AIPicks({ navigation }: any) {
           insiderSaleCount: data.insiderSaleCount,
           mostRecentCongressDate: data.mostRecentCongressDate,
           mostRecentInsiderDate: data.mostRecentInsiderDate,
+          mostRecentCongressSaleDate: data.mostRecentCongressSaleDate,
+          mostRecentInsiderSaleDate: data.mostRecentInsiderSaleDate,
           hasPriceDip: false,
           score,
           reasons
         } as StockPick;
+
+        return stockPick;
       });
 
       // Check for price dips and add dip scoring
@@ -498,18 +537,34 @@ export default function AIPicks({ navigation }: any) {
         <View style={styles.scoreRow}>
           <TouchableOpacity 
             style={styles.scoreBadge}
-            onPress={() => setSelectedStock(item)}
+            onPress={() => {
+              console.log('Opening score detail for:', item.ticker);
+              console.log('mostRecentInsiderDate:', item.mostRecentInsiderDate);
+              console.log('mostRecentCongressDate:', item.mostRecentCongressDate);
+              setSelectedStock(item);
+            }}
           >
             <Text style={styles.scoreLabel}>AI Score</Text>
             <Text style={styles.scoreValue}>{Math.round(item.score)}</Text>
           </TouchableOpacity>
           <View style={styles.reasonsContainer}>
-            {item.reasons.map((reason, index) => (
-              <View key={index} style={styles.reasonRow}>
-                <Text style={styles.reasonBullet}>•</Text>
-                <Text style={styles.reasonText}>{reason}</Text>
-              </View>
-            ))}
+            {item.reasons
+              .sort((a, b) => {
+                const aIsSale = a.includes('sale');
+                const bIsSale = b.includes('sale');
+                if (aIsSale && !bIsSale) return 1;
+                if (!aIsSale && bIsSale) return -1;
+                return 0;
+              })
+              .map((reason, index) => {
+                const isSale = reason.includes('sale');
+                return (
+                  <View key={index} style={styles.reasonRow}>
+                    <Text style={[styles.reasonBullet, isSale && { color: '#ef4444' }]}>•</Text>
+                    <Text style={[styles.reasonText, isSale && { color: '#f87171' }]}>{reason}</Text>
+                  </View>
+                );
+              })}
           </View>
         </View>
 
@@ -598,7 +653,7 @@ export default function AIPicks({ navigation }: any) {
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#00d4ff" />
-          <Text style={styles.loadingText}>Analysing stocks...</Text>
+          <Text style={styles.loadingText}>Analyzing stocks...</Text>
         </View>
       </View>
     );
@@ -658,7 +713,7 @@ export default function AIPicks({ navigation }: any) {
               </View>
 
               <View style={styles.subsection}>
-                <Text style={styles.subsectionTitle}>1. Recency (0-70 points)</Text>
+                <Text style={styles.subsectionTitle}>1. Purchase Recency (0-70 points)</Text>
                 <Text style={styles.sectionText}>
                   • Purchases within the last 7 days: 10-70 points (more recent = higher score)
                 </Text>
@@ -811,24 +866,14 @@ export default function AIPicks({ navigation }: any) {
                       +{selectedStock.insiderPurchaseCount * 50} pts
                     </Text>
                   </View>
-                  {selectedStock.mostRecentInsiderDate && (
-                    <Text style={styles.dateRangeText}>
-                      Most recent: {formatDaysAgo(selectedStock.mostRecentInsiderDate)}
-                    </Text>
-                  )}
-                </View>
-              )}
-              
-              {selectedStock?.hasInsiderSales && (
-                <View>
-                  <View style={styles.scoreComponentRow}>
-                    <Text style={styles.scoreComponentLabel}>
-                      • Insider Sales ({selectedStock.insiderSaleCount})
-                    </Text>
-                    <Text style={[styles.scoreComponentValue, { color: '#ef4444' }]}>
-                      -{selectedStock.insiderSaleCount * 50} pts
-                    </Text>
-                  </View>
+                  {selectedStock.mostRecentInsiderDate && (() => {
+                    const date = new Date(selectedStock.mostRecentInsiderDate);
+                    return (
+                      <Text style={styles.dateRangeText}>
+                        Most recent: {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                    );
+                  })()}
                 </View>
               )}
               
@@ -842,24 +887,14 @@ export default function AIPicks({ navigation }: any) {
                       +{selectedStock.congressPurchaseCount * 40} pts
                     </Text>
                   </View>
-                  {selectedStock.mostRecentCongressDate && (
-                    <Text style={styles.dateRangeText}>
-                      Most recent: {formatDaysAgo(selectedStock.mostRecentCongressDate)}
-                    </Text>
-                  )}
-                </View>
-              )}
-              
-              {selectedStock?.hasCongressSales && (
-                <View>
-                  <View style={styles.scoreComponentRow}>
-                    <Text style={styles.scoreComponentLabel}>
-                      • Congress Sales ({selectedStock.congressSaleCount})
-                    </Text>
-                    <Text style={[styles.scoreComponentValue, { color: '#f97316' }]}>
-                      -{selectedStock.congressSaleCount * 40} pts
-                    </Text>
-                  </View>
+                  {selectedStock.mostRecentCongressDate && (() => {
+                    const date = new Date(selectedStock.mostRecentCongressDate);
+                    return (
+                      <Text style={styles.dateRangeText}>
+                        Most recent: {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                    );
+                  })()}
                 </View>
               )}
               
@@ -879,19 +914,70 @@ export default function AIPicks({ navigation }: any) {
                 </View>
               )}
               
-              <View style={styles.scoreComponentRow}>
-                <Text style={styles.scoreComponentLabel}>
-                  • Recency Bonus
-                </Text>
-                <Text style={styles.scoreComponentValue}>
-                  +{selectedStock ? Math.round(selectedStock.score - 
-                    (selectedStock.insiderPurchaseCount * 50) - 
-                    (selectedStock.congressPurchaseCount * 40) -
-                    (selectedStock.dipScore || 0) +
-                    (selectedStock.insiderSaleCount * 50) +
-                    (selectedStock.congressSaleCount * 40)) : 0} pts
-                </Text>
-              </View>
+              {selectedStock && (() => {
+                const recencyBonus = Math.round(selectedStock.score - 
+                  (selectedStock.insiderPurchaseCount * 50) - 
+                  (selectedStock.congressPurchaseCount * 40) -
+                  (selectedStock.dipScore || 0) +
+                  (selectedStock.insiderSaleCount * 50) +
+                  (selectedStock.congressSaleCount * 40));
+                
+                if (recencyBonus > 0) {
+                  return (
+                    <View style={styles.scoreComponentRow}>
+                      <Text style={styles.scoreComponentLabel}>
+                        • Purchase Recency Bonus
+                      </Text>
+                      <Text style={styles.scoreComponentValue}>
+                        +{recencyBonus} pts
+                      </Text>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
+              
+              {selectedStock?.hasInsiderSales && (
+                <View>
+                  <View style={styles.scoreComponentRow}>
+                    <Text style={styles.scoreComponentLabel}>
+                      • Insider Sales ({selectedStock.insiderSaleCount})
+                    </Text>
+                    <Text style={[styles.scoreComponentValue, { color: '#ef4444' }]}>
+                      -{selectedStock.insiderSaleCount * 50} pts
+                    </Text>
+                  </View>
+                  {selectedStock.mostRecentInsiderSaleDate && (() => {
+                    const date = new Date(selectedStock.mostRecentInsiderSaleDate);
+                    return (
+                      <Text style={styles.dateRangeText}>
+                        Most recent: {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                    );
+                  })()}
+                </View>
+              )}
+              
+              {selectedStock?.hasCongressSales && (
+                <View>
+                  <View style={styles.scoreComponentRow}>
+                    <Text style={styles.scoreComponentLabel}>
+                      • Congress Sales ({selectedStock.congressSaleCount})
+                    </Text>
+                    <Text style={[styles.scoreComponentValue, { color: '#ef4444' }]}>
+                      -{selectedStock.congressSaleCount * 40} pts
+                    </Text>
+                  </View>
+                  {selectedStock.mostRecentCongressSaleDate && (() => {
+                    const date = new Date(selectedStock.mostRecentCongressSaleDate);
+                    return (
+                      <Text style={styles.dateRangeText}>
+                        Most recent: {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                    );
+                  })()}
+                </View>
+              )}
             </View>
           </View>
           </TouchableOpacity>
@@ -930,7 +1016,7 @@ export default function AIPicks({ navigation }: any) {
                 You are solely responsible for evaluating your own investment decisions, and you agree that the developers are not liable for any losses, damages, or consequences arising from the use of this app or reliance on its information.
               </Text>
               <Text style={styles.disclaimerText}>
-                All rights reserved. © 2025, Malachi J. King
+                © 2025. All rights reserved.
               </Text>
             </View>
           ) : null
@@ -955,6 +1041,8 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     marginTop: 16,
     fontSize: 16,
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
   header: {
     paddingHorizontal: 20,
