@@ -23,7 +23,7 @@ aptPkgs = [
 ]
 
 [phases.install]
-cmds = ["npm ci --omit=dev --omit=optional"]
+cmds = ["PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm ci --omit=dev --omit=optional"]
 
 [start]
-cmd = "node server.js"
+cmd = "PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser node server.js"
