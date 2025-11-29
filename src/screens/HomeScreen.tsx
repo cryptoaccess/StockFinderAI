@@ -578,14 +578,6 @@ const HomeScreen = () => {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.sectionTitleRow}>
-                <Text style={styles.sectionTitle}>
-                  {timeRange === '7' ? 'LAST 7 DAYS' : timeRange === '30' ? 'LAST 30 DAYS' : 'LAST 90 DAYS'}
-                </Text>
-                <TouchableOpacity style={styles.refreshIconButton} onPress={fetchAllMarketData}>
-                  <Text style={styles.refreshIconText}>↻</Text>
-                </TouchableOpacity>
-              </View>
               <View style={styles.chartsGroup}>
                 {renderIndexChart('Dow Jones', displayData.dow, 'rgba(0, 212, 255, 0.8)')}
                 {renderIndexChart('S&P 500', displayData.sp500, 'rgba(0, 255, 136, 0.8)')}
@@ -724,30 +716,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginTop: 10,
   },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 5,
-    marginBottom: 5,
-    paddingLeft: 5,
-    paddingRight: 5,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    color: '#64748b',
-    letterSpacing: 2,
-  },
-  refreshIconButton: {
-    padding: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  refreshIconText: {
-    color: '#7dd3fc',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
   toggleAndShareRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -815,6 +783,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0, 212, 255, 0.2)',
   },
   chartsGroup: {
+    marginTop: 6,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
     borderRadius: 15,
     borderWidth: 1,

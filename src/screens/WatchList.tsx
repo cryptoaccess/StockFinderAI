@@ -167,7 +167,7 @@ const WatchList: React.FC = () => {
       <View style={styles.titleSection}>
         <Text style={styles.screenTitle}>Watch List ({watchedStocks.length})</Text>
         <Text style={styles.subtitle}>
-          Tap stars to add or remove stocks from your watch list.
+          Tap stars to add or remove from your watch list
         </Text>
       </View>
 

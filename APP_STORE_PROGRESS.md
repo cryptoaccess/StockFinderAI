@@ -45,32 +45,10 @@
 - [x] Feature graphic (1024×500px) - screenshots/android/feature-graphic.png
 
 #### 2. Developer Accounts (Required)
-- [x] Apple Developer Program: $99/year - https://developer.apple.com/programs/
 - [x] Google Play Console: $25 one-time - https://play.google.com/console/signup
+- [x] Apple Developer Program: $99/year - https://developer.apple.com/programs/
 
-#### 3. iOS App Store Submission
-**Build Steps:**
-```bash
-cd ios
-pod install
-cd ..
-# Open in Xcode: open ios/MyReactNativeApp.xcworkspace
-# Product → Archive
-# Upload to App Store Connect
-```
-
-**App Store Connect:**
-- [ ] Create new app at https://appstoreconnect.apple.com
-- [ ] App Name: StockFinderAI
-- [ ] Category: Finance
-- [ ] Keywords: stocks, congress trades, insider trading, stock analysis, investment research
-- [ ] Description and screenshots
-- [ ] Privacy Policy URL: https://cryptoaccess.github.io/StockFinderAI/privacy-policy.html
-- [ ] Terms URL: https://cryptoaccess.github.io/StockFinderAI/terms-of-service.html
-- [ ] Support URL: https://cryptoaccess.github.io/StockFinderAI/
-- [ ] Submit for review
-
-#### 4. Google Play Store Submission
+#### 3. Google Play Store Submission
 **Build Steps:**
 ```bash
 # Generate keystore (first time only):
@@ -90,6 +68,28 @@ cd android
 - [ ] Privacy Policy: https://cryptoaccess.github.io/StockFinderAI/privacy-policy.html
 - [ ] Content rating questionnaire
 - [ ] Upload AAB file
+- [ ] Submit for review
+
+#### 4. iOS App Store Submission
+**Build Steps:**
+```bash
+cd ios
+pod install
+cd ..
+# Open in Xcode: open ios/MyReactNativeApp.xcworkspace
+# Product → Archive
+# Upload to App Store Connect
+```
+
+**App Store Connect:**
+- [ ] Create new app at https://appstoreconnect.apple.com
+- [ ] App Name: StockFinderAI
+- [ ] Category: Finance
+- [ ] Keywords: stocks, congress trades, insider trading, stock analysis, investment research
+- [ ] Description and screenshots
+- [ ] Privacy Policy URL: https://cryptoaccess.github.io/StockFinderAI/privacy-policy.html
+- [ ] Terms URL: https://cryptoaccess.github.io/StockFinderAI/terms-of-service.html
+- [ ] Support URL: https://cryptoaccess.github.io/StockFinderAI/
 - [ ] Submit for review
 
 #### 5. Pre-Launch Testing
