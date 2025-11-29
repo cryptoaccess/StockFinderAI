@@ -23,7 +23,10 @@ aptPkgs = [
 ]
 
 [phases.install]
-cmds = ["PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm ci --omit=dev --omit=optional"]
+cmds = [
+  "rm -rf /root/.cache/puppeteer",
+  "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm ci --omit=dev --omit=optional"
+]
 
 [start]
 cmd = "PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser node server.js"
