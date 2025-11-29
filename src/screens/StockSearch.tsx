@@ -31,7 +31,7 @@ const StockSearch = () => {
   const route = useRoute();
   const navigation = useNavigation();
   // @ts-ignore
-  const { symbolList = [], preSelectedSymbol } = route.params || {};
+  const { symbolList: passedSymbolList = [], preSelectedSymbol } = route.params || {};
   const searchInputRef = useRef<TextInput>(null);
   
   const [query, setQuery] = useState('');
@@ -43,11 +43,20 @@ const StockSearch = () => {
   const [loadingNews, setLoadingNews] = useState(false);
   const [similarStocks, setSimilarStocks] = useState<Stock[]>([]);
   const [watchList, setWatchList] = useState<Array<{symbol: string, name: string}>>([]);
+  const [symbolList, setSymbolList] = useState<Stock[]>(passedSymbolList);
 
-  // Load watch list on mount
+  // Load watch list and symbol list on mount
   useEffect(() => {
     loadWatchList();
+    loadSymbolList();
   }, []);
+  
+  // Update symbolList if passed from navigation params
+  useEffect(() => {
+    if (passedSymbolList && passedSymbolList.length > 0) {
+      setSymbolList(passedSymbolList);
+    }
+  }, [passedSymbolList]);
 
   // Focus on search input when screen comes into focus
   useFocusEffect(
@@ -67,6 +76,19 @@ const StockSearch = () => {
       }
     } catch (error) {
       console.error('Failed to load watch list:', error);
+    }
+  };
+
+  const loadSymbolList = async () => {
+    try {
+      const cachedSymbols = await AsyncStorage.getItem('stockSymbolList');
+      if (cachedSymbols) {
+        const parsedSymbols = JSON.parse(cachedSymbols);
+        setSymbolList(parsedSymbols);
+        console.log(`Loaded ${parsedSymbols.length} symbols from cache`);
+      }
+    } catch (error) {
+      console.error('Failed to load symbol list:', error);
     }
   };
 

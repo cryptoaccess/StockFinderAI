@@ -460,9 +460,25 @@ export default function AIPicks({ navigation }: any) {
         return stockPick;
       });
 
-      // Check for price dips and add dip scoring
+      // Filter to only include blue chip stocks or stocks in user's watchlist FIRST
+      const watchlistTickers = new Set(currentWatchList.map(w => w.symbol));
+      const blueChipSet = new Set(currentBlueChips);
+      
+      const filteredPicks = allPicks.filter(pick => 
+        blueChipSet.has(pick.ticker) || watchlistTickers.has(pick.ticker)
+      );
+
+      // Sort by score (highest first) BEFORE checking price dips
+      filteredPicks.sort((a, b) => b.score - a.score);
+
+      // Only check price dips for top 15 stocks to save API calls
+      const top15ForDipCheck = filteredPicks.slice(0, 15);
+      
+      console.log(`Checking price dips for top ${top15ForDipCheck.length} stocks...`);
+      
+      // Check for price dips and add dip scoring (only for top 15)
       const picksWithDips = await Promise.all(
-        allPicks.map(async (pick) => {
+        top15ForDipCheck.map(async (pick) => {
           const dipData = await checkPriceDip(pick.ticker);
           
           if (dipData.hasDip && dipData.dipScore) {
@@ -478,19 +494,11 @@ export default function AIPicks({ navigation }: any) {
         })
       );
 
-      // Filter to only include blue chip stocks or stocks in user's watchlist
-      const watchlistTickers = new Set(currentWatchList.map(w => w.symbol));
-      const blueChipSet = new Set(currentBlueChips);
-      
-      const filteredPicks = picksWithDips.filter(pick => 
-        blueChipSet.has(pick.ticker) || watchlistTickers.has(pick.ticker)
-      );
-
-      // Sort by score (highest first)
-      filteredPicks.sort((a, b) => b.score - a.score);
+      // Re-sort after adding dip scores
+      picksWithDips.sort((a, b) => b.score - a.score);
 
       // Limit to top 10
-      const top10Picks = filteredPicks.slice(0, 10);
+      const top10Picks = picksWithDips.slice(0, 10);
 
       console.log(`Found ${top10Picks.length} AI picks (top 10 from ${filteredPicks.length} filtered, ${picksWithDips.length} total)`);
       console.log(`Filter: ${currentBlueChips.length} blue chips, ${currentWatchList.length} watchlist stocks`);

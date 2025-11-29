@@ -641,16 +641,16 @@ export default function CongressTrades({ navigation }: any) {
           style={[styles.filterButton, selectedParty === 'D' && styles.filterButtonActive]}
           onPress={() => setSelectedParty('D')}
         >
-          <Text style={[styles.filterText, selectedParty === 'D' && styles.filterTextActive]}>
-            🔵 Dems ({demCount})
+          <Text numberOfLines={1} style={[styles.filterText, selectedParty === 'D' && styles.filterTextActive]}>
+            Dems ({demCount})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.filterButton, selectedParty === 'R' && styles.filterButtonActive]}
           onPress={() => setSelectedParty('R')}
         >
-          <Text style={[styles.filterText, selectedParty === 'R' && styles.filterTextActive]}>
-            🔴 GOP ({gopCount})
+          <Text numberOfLines={1} style={[styles.filterText, selectedParty === 'R' && styles.filterTextActive]}>
+            GOP ({gopCount})
           </Text>
         </TouchableOpacity>
       </View>
@@ -711,30 +711,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
     alignItems: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 8,
+    marginBottom: 4,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#94a3b8',
     textAlign: 'center',
     paddingHorizontal: 10,
-    lineHeight: 20,
+    lineHeight: 16,
   },
   popularStocksContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 4,
     flexWrap: 'nowrap',
   },
   popularStocksLabel: {
@@ -894,14 +894,14 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
     gap: 8,
   },
   filterButton: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 8,
     backgroundColor: 'rgba(0, 212, 255, 0.1)',
     borderWidth: 1,
@@ -914,21 +914,21 @@ const styles = StyleSheet.create({
   },
   filterText: {
     color: '#00d4ff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   filterTextActive: {
     color: '#000000',
   },
   listContainer: {
-    padding: 20,
+    padding: 12,
     paddingTop: 0,
   },
   groupCard: {
     backgroundColor: '#0a1929',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: 'rgba(0, 212, 255, 0.2)',
   },
@@ -936,8 +936,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-    paddingBottom: 8,
+    marginBottom: 6,
+    paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 212, 255, 0.2)',
   },
