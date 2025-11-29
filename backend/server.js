@@ -30,7 +30,6 @@ app.get('/api/trades', async (req, res) => {
     // Launch headless browser
     const browser = await puppeteer.launch({
       headless: 'new',
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -348,7 +347,6 @@ app.get('/api/insider-trades', async (req, res) => {
     
     const browser = await puppeteer.launch({
       headless: 'new',
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
