@@ -15,12 +15,23 @@ import axios from 'axios';
 import CongressTradesService from '../services/CongressTradesService';
 import InsiderTradesService from '../services/InsiderTradesService';
 
+// Full list of 71 blue chip stocks for AI Picks analysis
+const DEFAULT_BLUE_CHIPS = [
+  'AA', 'AAPL', 'ABBV', 'AMD', 'AVGO', 'AXON', 'BAC', 'BMY', 'BRK.B', 'BUD',
+  'C', 'CAT', 'CI', 'COKE', 'COST', 'CRWD', 'CVX', 'DD', 'DELL', 'DHR',
+  'DIS', 'F', 'GE', 'GM', 'GOOGL', 'GS', 'HD', 'HON', 'HPE', 'IBM',
+  'INTC', 'JCI', 'JNJ', 'JPM', 'KO', 'KR', 'LLY', 'LMT', 'MA', 'MCD',
+  'META', 'MNST', 'MRCK', 'MRK', 'MSFT', 'NFLX', 'NKE', 'NOC', 'NOW', 'NSRGY',
+  'NVDA', 'ORCL', 'PEP', 'PFE', 'PG', 'PLTR', 'PYPL', 'RHHBY', 'SBUX', 'SMCI',
+  'SNY', 'SONY', 'T', 'TMO', 'TSLA', 'TSM', 'UNH', 'V', 'VZ', 'WMT', 'XOM'
+];
+
 /**
  * AI Picks Screen
  * 
  * Displays top stock picks based on:
  * - Stocks with recent Congress or Insider purchases
- * - Filtered to only blue chip stocks (from saved preferences) or user's watchlist
+ * - Filtered to include all 71 blue chip stocks or user's watchlist stocks
  * - Scored by purchase frequency and recency
  * - Insider purchases weighted higher than Congress
  */
@@ -92,20 +103,10 @@ export default function AIPicks({ navigation }: any) {
 
   const loadBlueChipList = async () => {
     try {
-      // Load the user's selected blue chip stocks from BlueChipDips preferences
-      const savedStocks = await AsyncStorage.getItem('blueChipSelectedStocks');
-      let loadedBlueChips: string[] = [];
-      if (savedStocks) {
-        loadedBlueChips = JSON.parse(savedStocks);
-        setBlueChipStocks(loadedBlueChips);
-      } else {
-        // Fallback to all available stocks if user hasn't customized
-        const savedAllStocks = await AsyncStorage.getItem('blueChipAllAvailableStocks');
-        if (savedAllStocks) {
-          loadedBlueChips = JSON.parse(savedAllStocks);
-          setBlueChipStocks(loadedBlueChips);
-        }
-      }
+      // Use the full list of 71 blue chip stocks for AI Picks
+      // (not just user's selected favorites from BlueChipDips screen)
+      const loadedBlueChips = DEFAULT_BLUE_CHIPS;
+      setBlueChipStocks(loadedBlueChips);
       return loadedBlueChips;
     } catch (error) {
       console.error('Failed to load blue chip list:', error);
@@ -510,10 +511,11 @@ export default function AIPicks({ navigation }: any) {
       const allPicksWithDipScores = [...picksWithDips, ...remainingPicks];
       allPicksWithDipScores.sort((a, b) => b.score - a.score);
 
-      // Limit to top 10
-      const top10Picks = allPicksWithDipScores.slice(0, 10);
+      // Filter to only positive scores and limit to top 10
+      const positiveScorePicks = allPicksWithDipScores.filter(pick => pick.score > 0);
+      const top10Picks = positiveScorePicks.slice(0, 10);
 
-      console.log(`Found ${top10Picks.length} AI picks (top 10 from ${filteredPicks.length} filtered, ${allPicksWithDipScores.length} total)`);
+      console.log(`Found ${top10Picks.length} AI picks (top 10 from ${positiveScorePicks.length} positive scores, ${filteredPicks.length} filtered, ${allPicksWithDipScores.length} total)`);
       console.log(`Filter: ${currentBlueChips.length} blue chips, ${currentWatchList.length} watchlist stocks`);
       setPicks(top10Picks);
       setLoading(false);

@@ -58,14 +58,17 @@ const StockSearch = () => {
     }
   }, [passedSymbolList]);
 
-  // Focus on search input when screen comes into focus
+  // Focus on search input when screen comes into focus (only if no preSelectedSymbol)
   useFocusEffect(
     React.useCallback(() => {
-      const timer = setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 300);
-      return () => clearTimeout(timer);
-    }, [])
+      // Don't auto-focus keyboard if user navigated here by clicking a stock ticker
+      if (!preSelectedSymbol) {
+        const timer = setTimeout(() => {
+          searchInputRef.current?.focus();
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    }, [preSelectedSymbol])
   );
 
   const loadWatchList = async () => {
@@ -244,8 +247,25 @@ const StockSearch = () => {
       }
     }
 
+    // If no sector matched, show random stocks from the list
     if (!matchedSector || bestMatchScore === 0) {
-      setSimilarStocks([]);
+      const randomStocks: Stock[] = [];
+      const seenCompanies = new Set<string>();
+      const availableStocks = symbolList.filter((s: Stock) => s.symbol !== stock.symbol);
+      
+      // Shuffle and pick 4 random stocks
+      const shuffled = [...availableStocks].sort(() => Math.random() - 0.5);
+      for (const s of shuffled) {
+        const baseSymbol = s.symbol.split('-')[0];
+        if (!seenCompanies.has(baseSymbol)) {
+          randomStocks.push(s);
+          seenCompanies.add(baseSymbol);
+          if (randomStocks.length === 4) break;
+        }
+      }
+      
+      console.log(`No sector match for ${stock.symbol}, showing random stocks:`, randomStocks.map(s => s.symbol).join(', '));
+      setSimilarStocks(randomStocks);
       return;
     }
 
@@ -648,7 +668,7 @@ const StockSearch = () => {
                     }}
                     style={styles.newsItem}
                   >
-                    <Text style={styles.newsDate}>[{item.pubDate}]</Text>
+                    <Text style={styles.newsDate}>{item.pubDate}</Text>
                     <Text style={styles.newsHeadline}>{item.title}</Text>
                   </TouchableOpacity>
                 ))}
@@ -891,8 +911,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   newsDate: {
-    color: '#ef4444',
+    color: '#ff4444',
     fontSize: 12,
+    fontWeight: 'bold',
     marginBottom: 2,
   },
   newsHeadline: {

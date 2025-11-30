@@ -77,9 +77,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.myreactnativeapp"
+    namespace "com.stockfinderai"
     defaultConfig {
-        applicationId "com.myreactnativeapp"
+        applicationId "com.stockfinderai"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
