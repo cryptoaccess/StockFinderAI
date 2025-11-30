@@ -77,6 +77,8 @@ export default function CongressTrades({ navigation }: any) {
   const [gopCount, setGopCount] = useState(0);
   const [mostBoughtStocks, setMostBoughtStocks] = useState<string>('');
   const [mostSoldStocks, setMostSoldStocks] = useState<string>('');
+  const [favoriteMembers, setFavoriteMembers] = useState<Array<{name: string, state: string}>>([]);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   const toggleCard = (cardId: string) => {
     setExpandedCards(prev => {
@@ -101,8 +103,35 @@ export default function CongressTrades({ navigation }: any) {
       if (cachedSymbols) {
         setSymbolList(JSON.parse(cachedSymbols));
       }
+      // Load favorite congress members
+      const savedFavorites = await AsyncStorage.getItem('favoriteCongressMembers');
+      if (savedFavorites) {
+        setFavoriteMembers(JSON.parse(savedFavorites));
+      }
     } catch (error) {
       console.error('Error loading watchlist:', error);
+    }
+  };
+
+  const toggleFavoriteMember = async (name: string, state: string) => {
+    try {
+      const isFavorited = favoriteMembers.some(
+        item => item.name === name && item.state === state
+      );
+      let newFavorites;
+      
+      if (isFavorited) {
+        newFavorites = favoriteMembers.filter(
+          item => !(item.name === name && item.state === state)
+        );
+      } else {
+        newFavorites = [...favoriteMembers, { name, state }];
+      }
+      
+      setFavoriteMembers(newFavorites);
+      await AsyncStorage.setItem('favoriteCongressMembers', JSON.stringify(newFavorites));
+    } catch (error) {
+      console.error('Error toggling favorite member:', error);
     }
   };
 
@@ -373,17 +402,24 @@ export default function CongressTrades({ navigation }: any) {
       });
     }
     
+    // Apply favorites filter
+    if (showFavoritesOnly && favoriteMembers.length > 0) {
+      filtered = filtered.filter(t => 
+        favoriteMembers.some(fav => fav.name === t.representative && fav.state === t.state)
+      );
+    }
+    
     groupTradesByRepresentative(filtered);
     updateTradeCounts(filtered);
     // Always update party counts from the full trades array
     updatePartyCounts(trades);
-  }, [selectedParty, selectedTransactionType, trades]);
+  }, [selectedParty, selectedTransactionType, trades, showFavoritesOnly, favoriteMembers]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      // Force refresh from API
-      const tradesData = await CongressTradesService.refreshTrades();
+      // Reload from cache (same as initial load)
+      const tradesData = await CongressTradesService.getTrades();
       if (tradesData.length > 0) {
         setTrades(tradesData);
         groupTradesByRepresentative(tradesData);
@@ -407,6 +443,9 @@ export default function CongressTrades({ navigation }: any) {
     const purchases = item.trades.filter(t => t.transactionType.toLowerCase().includes('purchase'));
     const sales = item.trades.filter(t => t.transactionType.toLowerCase().includes('sale'));
     const isExpanded = expandedCards.has(item.id);
+    const isFavorited = favoriteMembers.some(
+      fav => fav.name === item.representative && fav.state === item.state
+    );
     
     // Get unique tickers for purchases and sales
     const purchaseTickers = [...new Set(purchases.map(t => t.ticker))].sort();
@@ -423,9 +462,20 @@ export default function CongressTrades({ navigation }: any) {
       <View style={styles.groupCard}>
         <TouchableOpacity onPress={() => toggleCard(item.id)} activeOpacity={0.7}>
           <View style={styles.groupHeader}>
-            <Text style={styles.representativeName}>
-              {item.representative} <Text style={styles.statePartyText}>({item.state} - <Text style={{ color: partyColor }}>{partyLetter}</Text>)</Text>
-            </Text>
+            <View style={styles.representativeNameContainer}>
+              <Text style={styles.representativeName}>
+                {item.representative} <Text style={styles.statePartyText}>({item.state} - <Text style={{ color: partyColor }}>{partyLetter}</Text>)</Text>
+              </Text>
+              <TouchableOpacity 
+                onPress={(e) => {
+                  e.stopPropagation();
+                  toggleFavoriteMember(item.representative, item.state);
+                }}
+                style={styles.memberStarIcon}
+              >
+                <Text style={styles.memberStarText}>{isFavorited ? '★' : '☆'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           
           <View style={styles.summaryRow}>
@@ -550,19 +600,7 @@ export default function CongressTrades({ navigation }: any) {
         {(mostBoughtStocks || mostSoldStocks) && (
           <View style={[styles.popularStocksContainer, { flexWrap: 'wrap', flexDirection: 'column', alignItems: 'flex-start' }]}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
-              <TouchableOpacity 
-                onPress={() => setSelectedTransactionType(selectedTransactionType === 'Purchase' ? 'All' : 'Purchase')}
-                style={[
-                  styles.transactionFilterButton,
-                  selectedTransactionType === 'Purchase' && styles.transactionFilterButtonActivePurchase
-                ]}
-              >
-                <Text style={[
-                  styles.transactionFilterButtonText,
-                  { color: '#22c55e' },
-                  selectedTransactionType === 'Purchase' && styles.transactionFilterButtonTextActivePurchase
-                ]}>Most Bought:</Text>
-              </TouchableOpacity>
+              <Text style={[styles.popularStocksValue, { color: '#22c55e' }]}>Most Bought:</Text>
               {(() => {
                 // Calculate ticker counts for Most Bought (filtered by party)
                 const tickerCounts: Record<string, number> = {};
@@ -586,19 +624,7 @@ export default function CongressTrades({ navigation }: any) {
               })()}
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 2 }}>
-              <TouchableOpacity 
-                onPress={() => setSelectedTransactionType(selectedTransactionType === 'Sale' ? 'All' : 'Sale')}
-                style={[
-                  styles.transactionFilterButton,
-                  selectedTransactionType === 'Sale' && styles.transactionFilterButtonActiveSale
-                ]}
-              >
-                <Text style={[
-                  styles.transactionFilterButtonText,
-                  { color: '#ef4444' },
-                  selectedTransactionType === 'Sale' && styles.transactionFilterButtonTextActiveSale
-                ]}>Most Sold:</Text>
-              </TouchableOpacity>
+              <Text style={[styles.popularStocksValue, { color: '#ef4444' }]}>Most Sold:</Text>
               {(() => {
                 // Calculate ticker counts for Most Sold (filtered by party)
                 const tickerCounts: Record<string, number> = {};
@@ -626,33 +652,54 @@ export default function CongressTrades({ navigation }: any) {
       </View>
 
       <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[styles.filterButton, selectedParty === 'All' && styles.filterButtonActive]}
-          onPress={() => {
-            setSelectedParty('All');
-            setSelectedTransactionType('All');
-          }}
-        >
-          <Text style={[styles.filterText, selectedParty === 'All' && styles.filterTextActive]}>
-            All
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, selectedParty === 'D' && styles.filterButtonActive]}
-          onPress={() => setSelectedParty('D')}
-        >
-          <Text numberOfLines={1} style={[styles.filterText, selectedParty === 'D' && styles.filterTextActive]}>
-            Dems ({demCount})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, selectedParty === 'R' && styles.filterButtonActive]}
-          onPress={() => setSelectedParty('R')}
-        >
-          <Text numberOfLines={1} style={[styles.filterText, selectedParty === 'R' && styles.filterTextActive]}>
-            GOP ({gopCount})
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.filterRow}>
+          <TouchableOpacity
+            style={[styles.filterButton, selectedParty === 'All' && styles.filterButtonActive]}
+            onPress={() => {
+              setSelectedParty('All');
+              setSelectedTransactionType('All');
+              setShowFavoritesOnly(false);
+            }}
+          >
+            <Text style={[styles.filterText, selectedParty === 'All' && styles.filterTextActive]}>
+              All
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterButton, 
+              styles.favoritesFilterButton,
+              showFavoritesOnly && styles.favoritesFilterButtonActive
+            ]}
+            onPress={() => setShowFavoritesOnly(!showFavoritesOnly)}
+          >
+            <Text style={[
+              styles.filterText, 
+              styles.favoritesFilterText,
+              showFavoritesOnly && styles.favoritesFilterTextActive
+            ]}>
+              ★ Favorites ({favoriteMembers.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.filterRow}>
+          <TouchableOpacity
+            style={[styles.filterButton, selectedParty === 'D' && styles.filterButtonActive]}
+            onPress={() => setSelectedParty(selectedParty === 'D' ? 'All' : 'D')}
+          >
+            <Text numberOfLines={1} style={[styles.filterText, selectedParty === 'D' && styles.filterTextActive]}>
+              Dems ({demCount})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterButton, selectedParty === 'R' && styles.filterButtonActive]}
+            onPress={() => setSelectedParty(selectedParty === 'R' ? 'All' : 'R')}
+          >
+            <Text numberOfLines={1} style={[styles.filterText, selectedParty === 'R' && styles.filterTextActive]}>
+              GOP ({gopCount})
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -784,16 +831,16 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
     flexWrap: 'wrap',
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#94a3b8',
     fontWeight: '600',
   },
   summaryValue: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#ffffff',
     fontWeight: '500',
   },
@@ -804,11 +851,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   expandButtonContainer: {
-    marginTop: 12,
+    marginTop: 6,
     alignItems: 'center',
   },
   expandButton: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#00d4ff',
     fontWeight: '600',
   },
@@ -859,7 +906,7 @@ const styles = StyleSheet.create({
   tickerWithStar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   starIcon: {
     padding: 0,
@@ -893,16 +940,19 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   filterContainer: {
-    flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 8,
+    paddingBottom: 6,
+    gap: 4,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
   filterButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 20,
+    borderRadius: 6,
     backgroundColor: 'rgba(0, 212, 255, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(0, 212, 255, 0.2)',
@@ -912,6 +962,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#00d4ff',
     borderColor: '#00d4ff',
   },
+  favoritesFilterButton: {
+    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+    borderColor: 'rgba(251, 191, 36, 0.2)',
+  },
+  favoritesFilterButtonActive: {
+    backgroundColor: '#fbbf24',
+    borderColor: '#fbbf24',
+  },
   filterText: {
     color: '#00d4ff',
     fontSize: 13,
@@ -920,15 +978,21 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: '#000000',
   },
+  favoritesFilterText: {
+    color: '#fbbf24',
+  },
+  favoritesFilterTextActive: {
+    color: '#000000',
+  },
   listContainer: {
-    padding: 12,
+    padding: 8,
     paddingTop: 0,
   },
   groupCard: {
     backgroundColor: '#0a1929',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: 'rgba(0, 212, 255, 0.2)',
   },
@@ -936,16 +1000,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
-    paddingBottom: 6,
+    marginBottom: 4,
+    paddingBottom: 4,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 212, 255, 0.2)',
   },
+  representativeNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
   representativeName: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '600',
     color: '#ffffff',
     flex: 1,
+  },
+  memberStarIcon: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  memberStarText: {
+    fontSize: 24,
+    color: '#fbbf24',
+    lineHeight: 24,
   },
   statePartyText: {
     fontSize: 15,
@@ -958,7 +1037,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tickerBadge: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
   },
   tradeRow: {

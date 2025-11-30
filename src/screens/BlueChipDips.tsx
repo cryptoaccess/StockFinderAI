@@ -208,6 +208,9 @@ const BlueChipDips: React.FC = () => {
 
       if (savedStocks) {
         setSelectedStocks(JSON.parse(savedStocks));
+      } else {
+        // First time - save the default blue chips
+        await AsyncStorage.setItem('blueChipSelectedStocks', JSON.stringify(DEFAULT_BLUE_CHIPS));
       }
       if (savedDayPeriod) {
         setDayPeriod(parseInt(savedDayPeriod));
@@ -220,6 +223,9 @@ const BlueChipDips: React.FC = () => {
       }
       if (savedAllStocks) {
         setAllAvailableStocks(JSON.parse(savedAllStocks));
+      } else {
+        // First time - save the default blue chips as available stocks
+        await AsyncStorage.setItem('blueChipAllAvailableStocks', JSON.stringify(DEFAULT_BLUE_CHIPS));
       }
     } catch (error) {
       console.log('Error loading preferences:', error);

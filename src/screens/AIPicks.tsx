@@ -402,13 +402,24 @@ export default function AIPicks({ navigation }: any) {
         // Recency bonus (more recent = higher score)
         const now = new Date();
         const daysAgo = Math.floor((now.getTime() - data.mostRecentDate.getTime()) / (1000 * 60 * 60 * 24));
-        if (daysAgo <= 7) {
-          const recencyBonus = (8 - daysAgo) * 10; // 70 points for today, down to 10 for 7 days ago
-          score += recencyBonus;
+        if (daysAgo <= 1) {
+          score += 70;
+        } else if (daysAgo === 2) {
+          score += 65;
+        } else if (daysAgo === 3) {
+          score += 60;
+        } else if (daysAgo === 4) {
+          score += 50;
+        } else if (daysAgo === 5) {
+          score += 40;
+        } else if (daysAgo === 6) {
+          score += 30;
+        } else if (daysAgo === 7) {
+          score += 25;
         } else if (daysAgo <= 14) {
-          score += 10;
+          score += 20;
         } else if (daysAgo <= 21) {
-          score += 5;
+          score += 10;
         }
 
         // Congress purchases (40 points each)
@@ -473,6 +484,7 @@ export default function AIPicks({ navigation }: any) {
 
       // Only check price dips for top 15 stocks to save API calls
       const top15ForDipCheck = filteredPicks.slice(0, 15);
+      const remainingPicks = filteredPicks.slice(15); // Keep the rest without dip checks
       
       console.log(`Checking price dips for top ${top15ForDipCheck.length} stocks...`);
       
@@ -494,13 +506,14 @@ export default function AIPicks({ navigation }: any) {
         })
       );
 
-      // Re-sort after adding dip scores
-      picksWithDips.sort((a, b) => b.score - a.score);
+      // Combine picks with dips and remaining picks, then re-sort
+      const allPicksWithDipScores = [...picksWithDips, ...remainingPicks];
+      allPicksWithDipScores.sort((a, b) => b.score - a.score);
 
       // Limit to top 10
-      const top10Picks = picksWithDips.slice(0, 10);
+      const top10Picks = allPicksWithDipScores.slice(0, 10);
 
-      console.log(`Found ${top10Picks.length} AI picks (top 10 from ${filteredPicks.length} filtered, ${picksWithDips.length} total)`);
+      console.log(`Found ${top10Picks.length} AI picks (top 10 from ${filteredPicks.length} filtered, ${allPicksWithDipScores.length} total)`);
       console.log(`Filter: ${currentBlueChips.length} blue chips, ${currentWatchList.length} watchlist stocks`);
       setPicks(top10Picks);
       setLoading(false);
@@ -772,13 +785,31 @@ export default function AIPicks({ navigation }: any) {
               <View style={styles.subsection}>
                 <Text style={styles.subsectionTitle}>6. Purchase Recency (0-70 points)</Text>
                 <Text style={styles.sectionText}>
-                  • Purchases within the last 7 days: 10-70 points (more recent = higher score)
+                  • Today or 1 day ago: 70 points
                 </Text>
                 <Text style={styles.sectionText}>
-                  • Purchases 8-14 days ago: 10 points
+                  • 2 days ago: 65 points
                 </Text>
                 <Text style={styles.sectionText}>
-                  • Purchases 15-21 days ago: 5 points
+                  • 3 days ago: 60 points
+                </Text>
+                <Text style={styles.sectionText}>
+                  • 4 days ago: 50 points
+                </Text>
+                <Text style={styles.sectionText}>
+                  • 5 days ago: 40 points
+                </Text>
+                <Text style={styles.sectionText}>
+                  • 6 days ago: 30 points
+                </Text>
+                <Text style={styles.sectionText}>
+                  • 7 days ago: 25 points
+                </Text>
+                <Text style={styles.sectionText}>
+                  • 8-14 days ago: 20 points
+                </Text>
+                <Text style={styles.sectionText}>
+                  • 15-21 days ago: 10 points
                 </Text>
                 <Text style={styles.sectionText}>
                   • Older purchases: 0 points
@@ -1034,15 +1065,15 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
     alignItems: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 8,
+    marginBottom: 4,
     textAlign: 'center',
   },
   subtitle: {
@@ -1050,17 +1081,17 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     textAlign: 'center',
     paddingHorizontal: 10,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   listContainer: {
-    padding: 10,
-    paddingBottom: 20,
+    padding: 8,
+    paddingBottom: 16,
   },
   pickCard: {
     backgroundColor: '#0a1929',
-    borderRadius: 12,
-    marginBottom: 12,
-    padding: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#334155',
     shadowColor: '#000',
@@ -1073,7 +1104,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   tickerCompanyRow: {
     flexDirection: 'row',
@@ -1114,7 +1145,7 @@ const styles = StyleSheet.create({
   scoreRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 8,
     gap: 0,
   },
   scoreBadge: {
@@ -1209,11 +1240,11 @@ const styles = StyleSheet.create({
   rankingsButton: {
     backgroundColor: 'rgba(0, 212, 255, 0.15)',
     borderRadius: 8,
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: '#00d4ff',
-    marginTop: 12,
+    marginTop: 6,
     alignSelf: 'center',
   },
   rankingsButtonText: {
