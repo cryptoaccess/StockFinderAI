@@ -644,7 +644,7 @@ const BlueChipDips: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.titleSection}>
         <Text style={styles.screenTitle}>Blue Chip Dips</Text>
-        <Text style={styles.subtitle}>Very large, established stocks in a recent price dip</Text>
+        <Text style={styles.subtitle}>Large established stocks in a recent price dip</Text>
       </View>
       <View style={styles.filterBar}>
         <TouchableOpacity

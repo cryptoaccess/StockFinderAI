@@ -474,6 +474,7 @@ const StockSearch = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Stock Search</Text>
+      <Text style={styles.subtitle}>Search the top 500 U.S. stocks</Text>
       
       <TextInput
         ref={searchInputRef}
@@ -718,6 +719,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#7dd3fc',
+    textAlign: 'center',
+    marginTop: -12,
+    marginBottom: 16,
   },
   searchBox: {
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
