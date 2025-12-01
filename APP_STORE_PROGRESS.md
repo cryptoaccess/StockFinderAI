@@ -67,7 +67,8 @@ cd android
 - [ ] Store listing with screenshots and feature graphic
 - [ ] Privacy Policy: https://cryptoaccess.github.io/StockFinderAI/privacy-policy.html
 - [ ] Content rating questionnaire
-- [ ] Upload AAB file
+- [ ] Select testers: Input email addresses of at least 12 Android device testers
+- [ ] Create a new release: Upload AAB file
 - [ ] Submit for review
 
 #### 4. iOS App Store Submission

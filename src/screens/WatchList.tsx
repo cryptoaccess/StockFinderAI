@@ -167,7 +167,7 @@ const WatchList: React.FC = () => {
       <View style={styles.titleSection}>
         <Text style={styles.screenTitle}>Watch List ({watchedStocks.length})</Text>
         <Text style={styles.subtitle}>
-          Tap stars to add or remove from your watch list
+          Tap <Text style={styles.starIcon}>☆</Text> to add or remove from your watch list
         </Text>
       </View>
 
@@ -245,7 +245,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#7dd3fc',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 2,
+    marginBottom: -4,
+  },
+  starIcon: {
+    fontSize: 18,
+    color: '#7dd3fc',
+    lineHeight: 18,
   },
   searchButton: {
     backgroundColor: 'rgba(0, 212, 255, 0.2)',
