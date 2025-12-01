@@ -402,7 +402,8 @@ const BlueChipDips: React.FC = () => {
         
         return { ...stock, expanded: !stock.expanded };
       }
-      return stock;
+      // Collapse all other stocks when expanding this one
+      return { ...stock, expanded: false };
     }));
   };
 
