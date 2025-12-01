@@ -10,7 +10,8 @@ import {
   Alert,
   StatusBar,
   Share,
-  Modal
+  Modal,
+  Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
@@ -1025,6 +1026,15 @@ const HomeScreen = () => {
               <Text style={styles.modalText}>
                 You are solely responsible for evaluating your own investment decisions, and you agree that the developers are not liable for any losses, damages, or consequences arising from the use of this app or reliance on its information.
               </Text>
+              <View style={styles.legalLinksContainer}>
+                <TouchableOpacity onPress={() => Linking.openURL('https://cryptoaccess.github.io/StockFinderAI/privacy-policy.html')}>
+                  <Text style={styles.legalLink}>Privacy Policy</Text>
+                </TouchableOpacity>
+                <Text style={styles.legalSeparator}>  |  </Text>
+                <TouchableOpacity onPress={() => Linking.openURL('https://cryptoaccess.github.io/StockFinderAI/terms-of-service.html')}>
+                  <Text style={styles.legalLink}>Terms of Service</Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
             <TouchableOpacity 
               style={styles.acceptButton} 
@@ -1450,6 +1460,24 @@ const styles = StyleSheet.create({
     color: '#0a1929',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  legalLinksContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(125, 211, 252, 0.3)',
+  },
+  legalLink: {
+    color: '#7dd3fc',
+    fontSize: 13,
+    textDecorationLine: 'underline',
+  },
+  legalSeparator: {
+    color: '#7dd3fc',
+    fontSize: 13,
   },
 });
 
