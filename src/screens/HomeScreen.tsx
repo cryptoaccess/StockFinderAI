@@ -27,6 +27,7 @@ const screenWidth = Dimensions.get('window').width;
 const HomeScreen = () => {
   const navigation = useNavigation();
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+  const [showMenuModal, setShowMenuModal] = useState(false);
   
   // Store the full dataset
   const [fullMarketData, setFullMarketData] = useState<{
@@ -997,6 +998,22 @@ const HomeScreen = () => {
     );
   };
 
+  // Handle menu actions
+  const handleReviewApp = () => {
+    setShowMenuModal(false);
+    Linking.openURL('https://play.google.com/store/apps/details?id=com.stockfinderai');
+  };
+
+  const handlePrivacyPolicy = () => {
+    setShowMenuModal(false);
+    Linking.openURL('https://cryptoaccess.github.io/StockFinderAI/privacy-policy.html');
+  };
+
+  const handleTermsOfService = () => {
+    setShowMenuModal(false);
+    Linking.openURL('https://cryptoaccess.github.io/StockFinderAI/terms-of-service.html');
+  };
+
   // Navigation button component
   const NavButton = ({ title, icon, onPress }: { title: string; icon: string; onPress: () => void }) => (
     <TouchableOpacity style={styles.navButton} onPress={onPress}>
@@ -1046,9 +1063,48 @@ const HomeScreen = () => {
         </View>
       </Modal>
 
+      {/* Menu Modal */}
+      <Modal
+        visible={showMenuModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMenuModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.menuOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMenuModal(false)}
+        >
+          <View style={styles.menuContent}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleReviewApp}>
+              <Text style={styles.menuIcon}>⭐</Text>
+              <Text style={styles.menuText}>Review this app</Text>
+            </TouchableOpacity>
+            <View style={styles.menuDivider} />
+            <TouchableOpacity style={styles.menuItem} onPress={handlePrivacyPolicy}>
+              <Text style={styles.menuIcon}>🔒</Text>
+              <Text style={styles.menuText}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <View style={styles.menuDivider} />
+            <TouchableOpacity style={styles.menuItem} onPress={handleTermsOfService}>
+              <Text style={styles.menuIcon}>📄</Text>
+              <Text style={styles.menuText}>Terms of Service</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.hamburgerButton}
+            onPress={() => setShowMenuModal(true)}
+          >
+            <View style={styles.hamburgerLine} />
+            <View style={styles.hamburgerLine} />
+            <View style={styles.hamburgerLine} />
+          </TouchableOpacity>
           <Text style={styles.title}>StockFinderAI</Text>
           <Text style={styles.subtitle}>Market Intelligence Dashboard</Text>
           {lastUpdate && (
@@ -1478,6 +1534,60 @@ const styles = StyleSheet.create({
   legalSeparator: {
     color: '#7dd3fc',
     fontSize: 13,
+  },
+  hamburgerButton: {
+    position: 'absolute',
+    top: 10,
+    left: 15,
+    zIndex: 10,
+    padding: 10,
+  },
+  hamburgerLine: {
+    width: 25,
+    height: 3,
+    backgroundColor: '#00d4ff',
+    marginVertical: 3,
+    borderRadius: 2,
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+  },
+  menuContent: {
+    backgroundColor: '#1e293b',
+    marginTop: 60,
+    marginRight: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+  menuIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  menuText: {
+    fontSize: 15,
+    color: '#cbd5e1',
+    fontWeight: '500',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 212, 255, 0.2)',
+    marginHorizontal: 10,
   },
 });
 
