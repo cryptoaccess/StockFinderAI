@@ -134,10 +134,28 @@ const BlueChipDips: React.FC = () => {
   const [newStockSymbol, setNewStockSymbol] = useState<string>('');
   const [allAvailableStocks, setAllAvailableStocks] = useState<string[]>(DEFAULT_BLUE_CHIPS);
   const [watchList, setWatchList] = useState<Array<{symbol: string, name: string}>>([]);
+  const [symbolList, setSymbolList] = useState<Array<{symbol: string, name: string}>>([]);
+  const [invalidStockError, setInvalidStockError] = useState<boolean>(false);
+  const [duplicateStockError, setDuplicateStockError] = useState<boolean>(false);
 
   const dayOptions = [2, 3, 5, 7];
   const thresholdOptions = [-2, -3, -4, -5];
   const growthOptions = [5, 10, 15, 20, 25, 30];
+
+  // Load symbol list from cache
+  useEffect(() => {
+    const loadSymbolList = async () => {
+      try {
+        const cachedData = await AsyncStorage.getItem('stockSymbolList');
+        if (cachedData) {
+          setSymbolList(JSON.parse(cachedData));
+        }
+      } catch (error) {
+        console.log('Error loading symbol list:', error);
+      }
+    };
+    loadSymbolList();
+  }, []);
 
   const generateDateLabels = (dates: string[]): string[] => {
     if (dates.length === 0) return [];
@@ -348,12 +366,36 @@ const BlueChipDips: React.FC = () => {
 
   const addNewStock = () => {
     const symbol = newStockSymbol.trim().toUpperCase();
-    if (symbol && !allAvailableStocks.includes(symbol)) {
-      const updatedStocks = [...allAvailableStocks, symbol].sort();
-      setAllAvailableStocks(updatedStocks);
-      setSelectedStocks(prev => [...prev, symbol]);
+    if (!symbol) return;
+
+    // Check if symbol already exists in the list
+    if (allAvailableStocks.includes(symbol)) {
+      setDuplicateStockError(true);
       setNewStockSymbol('');
+      // Hide error after 3 seconds
+      setTimeout(() => setDuplicateStockError(false), 3000);
+      return;
     }
+
+    // Check if symbol exists in the top 500 stock list
+    const isValidSymbol = symbolList.some(stock => stock.symbol === symbol);
+    
+    if (!isValidSymbol) {
+      // Show error message
+      setInvalidStockError(true);
+      setNewStockSymbol('');
+      // Hide error after 3 seconds
+      setTimeout(() => setInvalidStockError(false), 3000);
+      return;
+    }
+
+    // Valid symbol - add it
+    const updatedStocks = [...allAvailableStocks, symbol].sort();
+    setAllAvailableStocks(updatedStocks);
+    setSelectedStocks(prev => [...prev, symbol]);
+    setNewStockSymbol('');
+    setInvalidStockError(false);
+    setDuplicateStockError(false);
   };
 
   const applyStockSelection = () => {
@@ -858,7 +900,11 @@ const BlueChipDips: React.FC = () => {
                 placeholder="Add stock symbol (e.g., TSLA)"
                 placeholderTextColor="#64748b"
                 value={newStockSymbol}
-                onChangeText={setNewStockSymbol}
+                onChangeText={(text) => {
+                  setNewStockSymbol(text);
+                  setInvalidStockError(false);
+                  setDuplicateStockError(false);
+                }}
                 autoCapitalize="characters"
                 maxLength={10}
               />
@@ -869,6 +915,12 @@ const BlueChipDips: React.FC = () => {
                 <Text style={styles.addStockButtonText}>Add</Text>
               </TouchableOpacity>
             </View>
+            {invalidStockError && (
+              <Text style={styles.errorMessage}>Only blue chip stocks can be entered</Text>
+            )}
+            {duplicateStockError && (
+              <Text style={styles.errorMessage}>That stock is already on the list</Text>
+            )}
 
             <ScrollView style={styles.stockList}>
               {allAvailableStocks.map((symbol) => (
@@ -1242,6 +1294,14 @@ const styles = StyleSheet.create({
     color: '#00ff88',
     fontSize: 14,
     fontWeight: '600',
+  },
+  errorMessage: {
+    color: '#ff4444',
+    fontSize: 12,
+    marginTop: 0,
+    marginLeft: 5,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
   stockList: {
     maxHeight: 300,

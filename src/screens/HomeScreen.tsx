@@ -116,6 +116,7 @@ const HomeScreen = () => {
         { symbol: 'INTU', name: 'Intuit Inc' },
         { symbol: 'AMAT', name: 'Applied Materials' },
         { symbol: 'MU', name: 'Micron Technology' },
+        { symbol: 'SMCI', name: 'Super Micro Computer Inc' },
         { symbol: 'LRCX', name: 'Lam Research' },
         { symbol: 'ADI', name: 'Analog Devices' },
         { symbol: 'KLAC', name: 'KLA Corp' },
@@ -1004,6 +1005,11 @@ const HomeScreen = () => {
     Linking.openURL('https://play.google.com/store/apps/details?id=com.stockfinderai');
   };
 
+  const handleDonate = () => {
+    setShowMenuModal(false);
+    Linking.openURL('https://www.paypal.com/ncp/payment/QAQU3ZZ5NDDNW');
+  };
+
   const handlePrivacyPolicy = () => {
     setShowMenuModal(false);
     Linking.openURL('https://cryptoaccess.github.io/StockFinderAI/privacy-policy.html');
@@ -1017,7 +1023,7 @@ const HomeScreen = () => {
   // Navigation button component
   const NavButton = ({ title, icon, onPress }: { title: string; icon: string; onPress: () => void }) => (
     <TouchableOpacity style={styles.navButton} onPress={onPress}>
-      <Text style={styles.navButtonIcon}>{icon}</Text>
+      <Text style={[styles.navButtonIcon, icon === '★' && styles.starIconWhite]}>{icon}</Text>
       <Text style={styles.navButtonText}>{title}</Text>
     </TouchableOpacity>
   );
@@ -1079,6 +1085,11 @@ const HomeScreen = () => {
             <TouchableOpacity style={styles.menuItem} onPress={handleReviewApp}>
               <Text style={styles.menuIcon}>⭐</Text>
               <Text style={styles.menuText}>Review this app</Text>
+            </TouchableOpacity>
+            <View style={styles.menuDivider} />
+            <TouchableOpacity style={styles.menuItem} onPress={handleDonate}>
+              <Text style={styles.menuIcon}>👍</Text>
+              <Text style={styles.menuText}>Support the Developer</Text>
             </TouchableOpacity>
             <View style={styles.menuDivider} />
             <TouchableOpacity style={styles.menuItem} onPress={handlePrivacyPolicy}>
@@ -1167,7 +1178,7 @@ const HomeScreen = () => {
             <View style={styles.navGrid}>
               <NavButton 
                 title="My Watch List" 
-                icon="⭐"
+                icon="★"
                 onPress={() => {
                   // @ts-ignore
                   navigation.navigate('WatchList');
@@ -1440,6 +1451,10 @@ const styles = StyleSheet.create({
     fontSize: 32,
     marginBottom: 8,
   },
+  starIconWhite: {
+    color: '#ffffff',
+    fontSize: 48,
+  },
   navButtonText: {
     color: '#7dd3fc',
     fontSize: 14,
@@ -1540,13 +1555,16 @@ const styles = StyleSheet.create({
     top: 10,
     left: 15,
     zIndex: 10,
-    padding: 10,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
+    borderRadius: 6,
   },
   hamburgerLine: {
-    width: 25,
-    height: 3,
+    width: 20,
+    height: 2,
     backgroundColor: '#00d4ff',
-    marginVertical: 3,
+    marginVertical: 2.5,
     borderRadius: 2,
   },
   menuOverlay: {

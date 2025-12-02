@@ -188,7 +188,7 @@ const WatchList: React.FC = () => {
         </View>
       ) : watchedStocks.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>⭐</Text>
+          <Text style={styles.emptyIcon}>☆</Text>
           <Text style={styles.emptyTitle}>No stocks in your watch list</Text>
           <Text style={styles.emptyText}>
             Star stocks while browsing to add them to your watch list
@@ -287,6 +287,7 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 64,
     marginBottom: 16,
+    color: '#ffffff',
   },
   emptyTitle: {
     fontSize: 20,
