@@ -1024,7 +1024,7 @@ const HomeScreen = () => {
   const NavButton = ({ title, icon, onPress }: { title: string; icon: string; onPress: () => void }) => (
     <TouchableOpacity style={styles.navButton} onPress={onPress}>
       <Text style={[styles.navButtonIcon, icon === '★' && styles.starIconWhite]}>{icon}</Text>
-      <Text style={styles.navButtonText}>{title}</Text>
+      <Text style={[styles.navButtonText, icon === '★' && { marginTop: 0 }]}>{title}</Text>
     </TouchableOpacity>
   );
 
@@ -1453,7 +1453,9 @@ const styles = StyleSheet.create({
   },
   starIconWhite: {
     color: '#ffffff',
-    fontSize: 48,
+    fontSize: 42,
+    marginBottom: 0,
+    marginTop: -10,
   },
   navButtonText: {
     color: '#7dd3fc',
@@ -1553,7 +1555,7 @@ const styles = StyleSheet.create({
   hamburgerButton: {
     position: 'absolute',
     top: 10,
-    left: 15,
+    left: 10,
     zIndex: 10,
     padding: 8,
     borderWidth: 1,
