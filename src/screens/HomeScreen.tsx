@@ -1087,11 +1087,6 @@ const HomeScreen = () => {
               <Text style={styles.menuText}>Review this app</Text>
             </TouchableOpacity>
             <View style={styles.menuDivider} />
-            <TouchableOpacity style={styles.menuItem} onPress={handleDonate}>
-              <Text style={styles.menuIcon}>👍</Text>
-              <Text style={styles.menuText}>Support the Developer</Text>
-            </TouchableOpacity>
-            <View style={styles.menuDivider} />
             <TouchableOpacity style={styles.menuItem} onPress={handlePrivacyPolicy}>
               <Text style={styles.menuIcon}>🔒</Text>
               <Text style={styles.menuText}>Privacy Policy</Text>
