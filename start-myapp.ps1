@@ -5,6 +5,24 @@ $AvdName = "Medium_Phone_API_36.1"
 Write-Host "Switching to project folder..." -ForegroundColor Cyan
 Set-Location $ProjectPath
 
+# Sync version from package.json to iOS project
+Write-Host "Syncing version from package.json to iOS..." -ForegroundColor Cyan
+try {
+    $packageJson = Get-Content "$ProjectPath\package.json" -Raw | ConvertFrom-Json
+    $version = $packageJson.version
+    
+    $pbxprojPath = "$ProjectPath\ios\MyReactNativeApp.xcodeproj\project.pbxproj"
+    $pbxproj = Get-Content $pbxprojPath -Raw
+    
+    # Replace MARKETING_VERSION values
+    $pbxproj = $pbxproj -replace 'MARKETING_VERSION = [^;]+;', "MARKETING_VERSION = $version;"
+    
+    Set-Content $pbxprojPath -Value $pbxproj -NoNewline
+    Write-Host "  Updated iOS MARKETING_VERSION to $version" -ForegroundColor Green
+} catch {
+    Write-Host "  Warning: Could not sync version - $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 # Start backend server in a new PowerShell window
 Write-Host "Starting backend server..." -ForegroundColor Cyan
 Start-Process powershell -ArgumentList "-NoExit", "-Command cd '$ProjectPath\backend'; node server.js"

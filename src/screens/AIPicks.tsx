@@ -57,6 +57,8 @@ interface StockPick {
   dipPercentage?: number;
   dipDaysAgo?: number;
   dipScore?: number;
+  growth90Day?: number;
+  growthScore?: number;
   score: number;
   reasons: string[];
 }
@@ -130,21 +132,43 @@ export default function AIPicks({ navigation }: any) {
     dipPercentage?: number;
     daysAgo?: number;
     dipScore?: number;
+    growth90Day?: number;
+    growthScore?: number;
   }> => {
     try {
-      // Fetch 1 month of price data
+      // Fetch 90 days of price data to check both dips and growth
       const response = await axios.get(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=1mo&interval=1d`
+        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=90d&interval=1d`
       );
 
       const chartData = response.data.chart.result[0];
-      const closePrices = chartData.indicators.quote[0].close;
+      const closePrices = chartData.indicators.quote[0].close.filter((p: number | null) => p !== null);
 
       if (!closePrices || closePrices.length < 8) {
         return { hasDip: false };
       }
 
       const currentPrice = closePrices[closePrices.length - 1];
+      
+      // Calculate 90-day growth
+      let growth90Day = 0;
+      let growthScore = 0;
+      if (closePrices.length >= 60) { // Need at least 60 days of data
+        const price90DaysAgo = closePrices[0];
+        if (price90DaysAgo && currentPrice) {
+          growth90Day = ((currentPrice - price90DaysAgo) / price90DaysAgo) * 100;
+          
+          // Add growth score based on percentage
+          if (growth90Day >= 20) {
+            growthScore = 30;
+          } else if (growth90Day >= 11) {
+            growthScore = 20;
+          } else if (growth90Day >= 1) {
+            growthScore = 10;
+          }
+        }
+      }
+
       let bestDipScore = 0;
       let bestDipPercentage = 0;
       let bestDaysAgo = 0;
@@ -161,10 +185,10 @@ export default function AIPicks({ navigation }: any) {
         // Check if it's a dip (negative percentage) between -2% and -5%
         if (dipPercentage >= -5 && dipPercentage <= -2) {
           // Calculate score: larger dips and more recent = higher score
-          // Score range: 20-100 points
-          const dipMagnitudeScore = Math.abs(dipPercentage) * 10; // 20-50 points for 2-5% dip
+          // Score range: 10-50 points (halved from original)
+          const dipMagnitudeScore = Math.abs(dipPercentage) * 5; // 10-25 points for 2-5% dip
           const recencyMultiplier = (8 - daysAgo) / 6; // 1.0 for 2 days ago, 0.17 for 7 days ago
-          const dipScore = dipMagnitudeScore * (1 + recencyMultiplier); // 40-100 points
+          const dipScore = dipMagnitudeScore * (1 + recencyMultiplier); // 20-50 points
           
           if (dipScore > bestDipScore) {
             bestDipScore = dipScore;
@@ -174,19 +198,99 @@ export default function AIPicks({ navigation }: any) {
         }
       }
 
-      if (bestDipScore > 0) {
-        return {
-          hasDip: true,
-          dipPercentage: bestDipPercentage,
-          daysAgo: bestDaysAgo,
-          dipScore: bestDipScore
-        };
-      }
+      const result = {
+        hasDip: bestDipScore > 0,
+        dipPercentage: bestDipScore > 0 ? bestDipPercentage : undefined,
+        daysAgo: bestDipScore > 0 ? bestDaysAgo : undefined,
+        dipScore: bestDipScore > 0 ? bestDipScore : undefined,
+        growth90Day: growth90Day > 0 ? growth90Day : undefined,
+        growthScore: growthScore > 0 ? growthScore : undefined
+      };
 
-      return { hasDip: false };
+      return result;
     } catch (error) {
       console.log(`Error checking price dip for ${ticker}:`, error);
       return { hasDip: false };
+    }
+  };
+
+  // Get current date key for cache (EST timezone, refreshes at 10am EST)
+  const getCacheKey = (): string => {
+    const now = new Date();
+    
+    // Convert to EST (UTC-5, or UTC-4 during DST)
+    const estOffset = -5 * 60; // EST is UTC-5
+    const estTime = new Date(now.getTime() + (estOffset * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
+    
+    // If before 10am EST, use previous day's cache
+    const hour = estTime.getHours();
+    if (hour < 10) {
+      estTime.setDate(estTime.getDate() - 1);
+    }
+    
+    const year = estTime.getFullYear();
+    const month = String(estTime.getMonth() + 1).padStart(2, '0');
+    const day = String(estTime.getDate()).padStart(2, '0');
+    
+    return `aiPicksPriceData_${year}${month}${day}`;
+  };
+
+  // Load cached price data or fetch new data
+  const loadPriceDataWithCache = async (tickers: string[]) => {
+    try {
+      const cacheKey = getCacheKey();
+      const cached = await AsyncStorage.getItem(cacheKey);
+      
+      if (cached) {
+        console.log(`Using cached price data for AI Picks (key: ${cacheKey})`);
+        const parsedCache = JSON.parse(cached);
+        return parsedCache;
+      }
+      
+      console.log(`No cache found, fetching fresh price data (key: ${cacheKey})`);
+      
+      // Delete old cache entries before creating new one
+      await cleanupOldPriceCache(cacheKey);
+      
+      // Fetch price data for all tickers
+      const priceDataResults = await Promise.all(
+        tickers.map(async (ticker) => {
+          const data = await checkPriceDip(ticker);
+          return { ticker, data };
+        })
+      );
+      
+      // Convert to object for easy lookup
+      const priceDataMap: { [ticker: string]: any } = {};
+      priceDataResults.forEach(({ ticker, data }) => {
+        priceDataMap[ticker] = data;
+      });
+      
+      // Cache the results
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(priceDataMap));
+      console.log(`Cached price data for ${tickers.length} stocks`);
+      
+      return priceDataMap;
+    } catch (error) {
+      console.error('Error loading price data with cache:', error);
+      return {};
+    }
+  };
+
+  // Clean up old price cache entries (keep only current day)
+  const cleanupOldPriceCache = async (currentKey: string) => {
+    try {
+      const allKeys = await AsyncStorage.getAllKeys();
+      const oldPriceCacheKeys = allKeys.filter(key => 
+        key.startsWith('aiPicksPriceData_') && key !== currentKey
+      );
+      
+      if (oldPriceCacheKeys.length > 0) {
+        await AsyncStorage.multiRemove(oldPriceCacheKeys);
+        console.log(`Deleted ${oldPriceCacheKeys.length} old price cache entries`);
+      }
+    } catch (error) {
+      console.error('Error cleaning up old cache:', error);
     }
   };
 
@@ -489,11 +593,17 @@ export default function AIPicks({ navigation }: any) {
       
       console.log(`Checking price dips for top ${top15ForDipCheck.length} stocks...`);
       
-      // Check for price dips and add dip scoring (only for top 15)
-      const picksWithDips = await Promise.all(
-        top15ForDipCheck.map(async (pick) => {
-          const dipData = await checkPriceDip(pick.ticker);
-          
+      // Get tickers for top 15
+      const tickersToCheck = top15ForDipCheck.map(pick => pick.ticker);
+      
+      // Load price data from cache or fetch fresh
+      const priceDataMap = await loadPriceDataWithCache(tickersToCheck);
+      
+      // Apply price data to picks
+      const picksWithDips = top15ForDipCheck.map((pick) => {
+        const dipData = priceDataMap[pick.ticker];
+        
+        if (dipData) {
           if (dipData.hasDip && dipData.dipScore) {
             pick.hasPriceDip = true;
             pick.dipPercentage = dipData.dipPercentage;
@@ -503,9 +613,17 @@ export default function AIPicks({ navigation }: any) {
             pick.reasons.push(`${Math.abs(dipData.dipPercentage!).toFixed(1)}% price dip (${dipData.daysAgo} days)`);
           }
           
-          return pick;
-        })
-      );
+          // Add 90-day growth score
+          if (dipData.growth90Day && dipData.growthScore) {
+            pick.growth90Day = dipData.growth90Day;
+            pick.growthScore = dipData.growthScore;
+            pick.score += dipData.growthScore;
+            pick.reasons.push(`${dipData.growth90Day.toFixed(1)}% growth over 90 days`);
+          }
+        }
+        
+        return pick;
+      });
 
       // Combine picks with dips and remaining picks, then re-sort
       const allPicksWithDipScores = [...picksWithDips, ...remainingPicks];
@@ -656,6 +774,20 @@ export default function AIPicks({ navigation }: any) {
               </Text>
             </TouchableOpacity>
           )}
+          {item.growth90Day && item.growth90Day >= 1 && (
+            <TouchableOpacity 
+              style={[styles.badge, { borderColor: '#10b981' }]}
+              onPress={() => navigation.navigate('StockSearch', { 
+                preSelectedSymbol: item.ticker,
+                symbolList 
+              })}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.badgeText, { color: '#10b981' }]}>
+                {item.growth90Day.toFixed(1)}% Growth
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -766,7 +898,7 @@ export default function AIPicks({ navigation }: any) {
               </View>
 
               <View style={styles.subsection}>
-                <Text style={styles.subsectionTitle}>5. Price Dip Bonus (40-100 points)</Text>
+                <Text style={styles.subsectionTitle}>5. Price Dip Bonus (20-50 points)</Text>
                 <Text style={styles.sectionText}>
                   Stocks with recent price dips get bonus points, making them buying opportunities:
                 </Text>
@@ -774,18 +906,34 @@ export default function AIPicks({ navigation }: any) {
                   • Dip must be 2-5% within the last 2-7 days
                 </Text>
                 <Text style={styles.sectionText}>
-                  • Larger dips = more points (2% = 20 pts, 5% = 50 pts)
+                  • Larger dips = more points (2% = 10 pts, 5% = 25 pts)
                 </Text>
                 <Text style={styles.sectionText}>
                   • More recent dips = higher multiplier (2x for 2 days ago, 1.17x for 7 days ago)
                 </Text>
                 <Text style={styles.sectionText}>
-                  • Combined scoring range: 40-100 points
+                  • Combined scoring range: 20-50 points
                 </Text>
               </View>
 
               <View style={styles.subsection}>
-                <Text style={styles.subsectionTitle}>6. Purchase Recency (0-70 points)</Text>
+                <Text style={styles.subsectionTitle}>6. 90-Day Growth Bonus (10-30 points)</Text>
+                <Text style={styles.sectionText}>
+                  Stocks showing strong growth over the past 90 days receive bonus points:
+                </Text>
+                <Text style={styles.sectionText}>
+                  • 20% or higher growth: 30 points
+                </Text>
+                <Text style={styles.sectionText}>
+                  • 11-19.9% growth: 20 points
+                </Text>
+                <Text style={styles.sectionText}>
+                  • 1-10.9% growth: 10 points
+                </Text>
+              </View>
+
+              <View style={styles.subsection}>
+                <Text style={styles.subsectionTitle}>7. Purchase Recency (0-70 points)</Text>
                 <Text style={styles.sectionText}>
                   • Today or 1 day ago: 70 points
                 </Text>
@@ -866,16 +1014,16 @@ export default function AIPicks({ navigation }: any) {
               
               <View style={styles.scoreDetailDivider} />
               
-              <View style={styles.scoreDetailRow}>
+              <View style={[styles.scoreDetailRow, { marginVertical: 6 }]}>
                 <Text style={styles.scoreDetailLabel}>Total AI Score:</Text>
                 <Text style={[styles.scoreDetailValue, styles.scoreDetailTotal]}>
                   {selectedStock ? Math.round(selectedStock.score) : 0} points
                 </Text>
               </View>
               
-              <View style={styles.scoreDetailDivider} />
+              <View style={[styles.scoreDetailDivider, { marginBottom: 8 }]} />
               
-              <Text style={styles.scoreDetailSectionTitle}>Score Components:</Text>
+              <Text style={styles.scoreDetailSectionTitle}>Score Factors:</Text>
               
               {selectedStock?.hasInsiderPurchases && (
                 <View>
@@ -930,7 +1078,23 @@ export default function AIPicks({ navigation }: any) {
                     </Text>
                   </View>
                   <Text style={styles.dateRangeText}>
-                    {Math.abs(selectedStock.dipPercentage!).toFixed(1)}% dip, {selectedStock.dipDaysAgo} days ago
+                    {Math.abs(selectedStock.dipPercentage!).toFixed(1)}% dip, last {selectedStock.dipDaysAgo} days
+                  </Text>
+                </View>
+              )}
+              
+              {selectedStock?.growth90Day && selectedStock.growthScore && (
+                <View>
+                  <View style={styles.scoreComponentRow}>
+                    <Text style={styles.scoreComponentLabel}>
+                      • 90-Day Growth Bonus
+                    </Text>
+                    <Text style={styles.scoreComponentValue}>
+                      +{selectedStock.growthScore} pts
+                    </Text>
+                  </View>
+                  <Text style={styles.dateRangeText}>
+                    {selectedStock.growth90Day.toFixed(1)}% growth over 90 days
                   </Text>
                 </View>
               )}
@@ -939,7 +1103,8 @@ export default function AIPicks({ navigation }: any) {
                 const recencyBonus = Math.round(selectedStock.score - 
                   (selectedStock.insiderPurchaseCount * 50) - 
                   (selectedStock.congressPurchaseCount * 40) -
-                  (selectedStock.dipScore || 0) +
+                  (selectedStock.dipScore || 0) -
+                  (selectedStock.growthScore || 0) +
                   (selectedStock.insiderSaleCount * 50) +
                   (selectedStock.congressSaleCount * 40));
                 
@@ -1357,6 +1522,7 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#334155',
     marginVertical: 12,
+    marginHorizontal: -20,
   },
   scoreDetailSectionTitle: {
     fontSize: 15,
