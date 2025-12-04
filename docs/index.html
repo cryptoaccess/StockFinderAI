@@ -59,10 +59,61 @@
             border: 2px solid #00d4ff;
             border-radius: 5px;
             transition: all 0.3s;
+            min-width: 150px;
+            text-align: center;
         }
         .links a:hover {
             background: #00d4ff;
             color: #0a1929;
+        }
+        .download-section {
+            text-align: center;
+            margin: 60px 0 40px 0;
+        }
+        .download-section h2 {
+            color: #00d4ff;
+            font-size: 32px;
+            margin-bottom: 30px;
+        }
+        .store-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .store-button {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(255,255,255,0.1);
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #fff;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            border: 2px solid transparent;
+        }
+        .store-button:hover {
+            background: rgba(0,212,255,0.2);
+            border-color: #00d4ff;
+            transform: translateY(-2px);
+        }
+        .store-icon {
+            font-size: 40px;
+            margin-right: 15px;
+        }
+        .store-text {
+            text-align: left;
+        }
+        .store-text small {
+            display: block;
+            font-size: 12px;
+            color: #7dd3fc;
+            margin-bottom: 2px;
+        }
+        .store-text strong {
+            font-size: 18px;
+            color: #fff;
         }
         footer {
             text-align: center;
@@ -82,15 +133,15 @@
 
         <div class="features">
             <div class="feature">
-                <h3>📊 Congress Trades</h3>
+                <h3>🏛️ Congress Trades</h3>
                 <p>Track real-time congressional stock trading activity and see what lawmakers are buying and selling.</p>
             </div>
             <div class="feature">
-                <h3>🏢 Insider Trades</h3>
+                <h3>💼 Insider Trades</h3>
                 <p>Monitor corporate insider trading from executives, directors, and major shareholders.</p>
             </div>
             <div class="feature">
-                <h3>🤖 AI Picks</h3>
+                <h3>🦾 AI Picks</h3>
                 <p>Discover stocks with AI-analyzed opportunities based on congressional and insider activity.</p>
             </div>
             <div class="feature">
@@ -102,14 +153,35 @@
                 <p>Save and track your favorite stocks with a customizable watchlist.</p>
             </div>
             <div class="feature">
-                <h3>📈 Market Data</h3>
+                <h3>🔍 Market Data</h3>
                 <p>View real-time market indices and historical price charts.</p>
+            </div>
+        </div>
+
+        <div class="download-section">
+            <h2>Download StockFinderAI</h2>
+            <div class="store-buttons">
+                <a href="https://testflight.apple.com/join/cr3CpX5f" target="_blank" class="store-button">
+                    <div class="store-icon"></div>
+                    <div class="store-text">
+                        <small>Download on the</small>
+                        <strong>App Store</strong>
+                    </div>
+                </a>
+                <a href="https://play.google.com/store/apps/details?id=com.stockfinderai" target="_blank" class="store-button">
+                    <div class="store-icon">▶</div>
+                    <div class="store-text">
+                        <small>Get it on</small>
+                        <strong>Google Play</strong>
+                    </div>
+                </a>
             </div>
         </div>
 
         <div class="links">
             <a href="privacy-policy.html">Privacy Policy</a>
             <a href="terms-of-service.html">Terms of Service</a>
+            <a href="https://www.paypal.com/ncp/payment/QAQU3ZZ5NDDNW" target="_blank">Support</a>
         </div>
 
         <footer>

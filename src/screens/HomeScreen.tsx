@@ -1020,6 +1020,11 @@ const HomeScreen = () => {
     Linking.openURL('https://cryptoaccess.github.io/StockFinderAI/terms-of-service.html');
   };
 
+  const handleAbout = () => {
+    setShowMenuModal(false);
+    Linking.openURL('https://cryptoaccess.github.io/StockFinderAI/');
+  };
+
   // Navigation button component
   const NavButton = ({ title, icon, onPress }: { title: string; icon: string; onPress: () => void }) => (
     <TouchableOpacity style={styles.navButton} onPress={onPress}>
@@ -1095,6 +1100,11 @@ const HomeScreen = () => {
             <TouchableOpacity style={styles.menuItem} onPress={handleTermsOfService}>
               <Text style={styles.menuIcon}>📄</Text>
               <Text style={styles.menuText}>Terms of Service</Text>
+            </TouchableOpacity>
+            <View style={styles.menuDivider} />
+            <TouchableOpacity style={styles.menuItem} onPress={handleAbout}>
+              <Text style={styles.menuIcon}>ℹ️</Text>
+              <Text style={styles.menuText}>About</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

@@ -897,7 +897,7 @@ const BlueChipDips: React.FC = () => {
             <View style={styles.addStockRow}>
               <TextInput
                 style={styles.addStockInput}
-                placeholder="Add stock symbol (e.g., TSLA)"
+                placeholder="Add stock symbol"
                 placeholderTextColor="#64748b"
                 value={newStockSymbol}
                 onChangeText={(text) => {
