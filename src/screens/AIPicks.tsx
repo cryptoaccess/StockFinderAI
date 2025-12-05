@@ -1239,7 +1239,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#00d4ff',
     marginBottom: 4,
     textAlign: 'center',
   },
