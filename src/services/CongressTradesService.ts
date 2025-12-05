@@ -42,17 +42,35 @@ class CongressTradesService {
   }
 
   /**
+   * Get current cache date key based on EST timezone
+   * If before 10am EST, use previous day's cache
+   */
+  private getCacheDate(): string {
+    const now = new Date();
+    const estOffset = -5; // EST is UTC-5
+    const estTime = new Date(now.getTime() + (estOffset * 60 * 60 * 1000));
+    const estHour = estTime.getUTCHours();
+
+    // If before 10am EST, use previous day
+    if (estHour < 10) {
+      estTime.setUTCDate(estTime.getUTCDate() - 1);
+    }
+
+    return estTime.toISOString().split('T')[0];
+  }
+
+  /**
    * Prefetch trades in the background on app startup
-   * Only fetches if it's the first time today
+   * Only fetches if it's the first time today (after 10am EST)
    */
   async prefetchTrades(): Promise<void> {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const cacheDate = this.getCacheDate();
       const lastFetchDate = await AsyncStorage.getItem(LAST_FETCH_DATE_KEY);
 
-      // If we already fetched today, load from cache
-      if (lastFetchDate === today) {
-        console.log('[CongressTrades] Already fetched today, loading from cache...');
+      // If we already fetched for this cache period, load from cache
+      if (lastFetchDate === cacheDate) {
+        console.log('[CongressTrades] Already fetched for', cacheDate, '- loading from cache...');
         const cached = await AsyncStorage.getItem(CACHE_KEY);
         if (cached) {
           this.cachedTrades = JSON.parse(cached);
@@ -62,15 +80,15 @@ class CongressTradesService {
       }
 
       // Otherwise, fetch fresh data in background
-      console.log('[CongressTrades] Starting background fetch for', today);
+      console.log('[CongressTrades] Starting background fetch for cache date:', cacheDate);
       this.fetchPromise = this.fetchFreshTrades();
       
       // Don't await - let it run in background
       this.fetchPromise.then(async (trades) => {
         this.cachedTrades = trades;
         await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(trades));
-        await AsyncStorage.setItem(LAST_FETCH_DATE_KEY, today);
-        console.log('[CongressTrades] Background fetch complete:', trades.length, 'trades');
+        await AsyncStorage.setItem(LAST_FETCH_DATE_KEY, cacheDate);
+        console.log('[CongressTrades] Background fetch complete:', trades.length, 'trades for', cacheDate);
       }).catch(error => {
         console.error('[CongressTrades] Background fetch failed:', error);
       });
@@ -110,9 +128,9 @@ class CongressTradesService {
     const trades = await this.fetchPromise;
     this.cachedTrades = trades;
     
-    const today = new Date().toISOString().split('T')[0];
+    const cacheDate = this.getCacheDate();
     await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(trades));
-    await AsyncStorage.setItem(LAST_FETCH_DATE_KEY, today);
+    await AsyncStorage.setItem(LAST_FETCH_DATE_KEY, cacheDate);
     
     return trades;
   }
@@ -128,9 +146,9 @@ class CongressTradesService {
     const trades = await this.fetchPromise;
     this.cachedTrades = trades;
     
-    const today = new Date().toISOString().split('T')[0];
+    const cacheDate = this.getCacheDate();
     await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(trades));
-    await AsyncStorage.setItem(LAST_FETCH_DATE_KEY, today);
+    await AsyncStorage.setItem(LAST_FETCH_DATE_KEY, cacheDate);
     
     return trades;
   }

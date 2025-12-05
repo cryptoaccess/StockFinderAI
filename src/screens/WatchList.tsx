@@ -11,6 +11,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
+import CongressTradesService from '../services/CongressTradesService';
+import InsiderTradesService from '../services/InsiderTradesService';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -22,16 +24,106 @@ interface WatchedStock {
   changePercent?: number;
 }
 
+interface TradeInfo {
+  insiderPurchases: number;
+  insiderSales: number;
+  congressPurchases: number;
+  congressSales: number;
+  mostRecentInsiderPurchaseDate?: string;
+  mostRecentInsiderSaleDate?: string;
+  mostRecentCongressPurchaseDate?: string;
+  mostRecentCongressSaleDate?: string;
+}
+
 const WatchList: React.FC = () => {
   const navigation = useNavigation();
   const [watchedStocks, setWatchedStocks] = useState<WatchedStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [symbolList, setSymbolList] = useState<Array<{symbol: string, name: string}>>([]);
+  const [tradeData, setTradeData] = useState<Map<string, TradeInfo>>(new Map());
 
   useEffect(() => {
     loadWatchList();
     loadSymbolList();
+    loadTradeData();
   }, []);
+
+  const loadTradeData = async () => {
+    try {
+      const tradesMap = new Map<string, TradeInfo>();
+
+      // Load Congress trades
+      const congressTrades = await CongressTradesService.getTrades();
+      congressTrades.forEach(trade => {
+        if (trade.ticker) {
+          const ticker = trade.ticker.toUpperCase();
+          const info = tradesMap.get(ticker) || { 
+            insiderPurchases: 0, 
+            insiderSales: 0, 
+            congressPurchases: 0, 
+            congressSales: 0 
+          };
+          
+          const isPurchase = trade.transactionType?.toLowerCase().includes('purchase') || 
+                            trade.transactionType?.toLowerCase().includes('buy');
+          const isSale = trade.transactionType?.toLowerCase().includes('sale') || 
+                        trade.transactionType?.toLowerCase().includes('sell');
+          
+          if (isPurchase) {
+            info.congressPurchases++;
+            if (!info.mostRecentCongressPurchaseDate || trade.transactionDate > info.mostRecentCongressPurchaseDate) {
+              info.mostRecentCongressPurchaseDate = trade.transactionDate;
+            }
+          } else if (isSale) {
+            info.congressSales++;
+            if (!info.mostRecentCongressSaleDate || trade.transactionDate > info.mostRecentCongressSaleDate) {
+              info.mostRecentCongressSaleDate = trade.transactionDate;
+            }
+          }
+          
+          tradesMap.set(ticker, info);
+        }
+      });
+
+      // Load Insider trades
+      const insiderTrades = await InsiderTradesService.getTrades();
+      insiderTrades.forEach(trade => {
+        if (trade.ticker) {
+          const ticker = trade.ticker.toUpperCase();
+          const info = tradesMap.get(ticker) || { 
+            insiderPurchases: 0, 
+            insiderSales: 0, 
+            congressPurchases: 0, 
+            congressSales: 0 
+          };
+          
+          const isPurchase = trade.transactionType?.toLowerCase().includes('purchase') || 
+                            trade.transactionType?.toLowerCase().includes('buy');
+          const isSale = trade.transactionType?.toLowerCase().includes('sale') || 
+                        trade.transactionType?.toLowerCase().includes('sell');
+          
+          if (isPurchase) {
+            info.insiderPurchases++;
+            if (!info.mostRecentInsiderPurchaseDate || trade.transactionDate > info.mostRecentInsiderPurchaseDate) {
+              info.mostRecentInsiderPurchaseDate = trade.transactionDate;
+            }
+          } else if (isSale) {
+            info.insiderSales++;
+            if (!info.mostRecentInsiderSaleDate || trade.transactionDate > info.mostRecentInsiderSaleDate) {
+              info.mostRecentInsiderSaleDate = trade.transactionDate;
+            }
+          }
+          
+          tradesMap.set(ticker, info);
+        }
+      });
+
+      setTradeData(tradesMap);
+      console.log('[WatchList] Loaded trade data for', tradesMap.size, 'tickers');
+    } catch (error) {
+      console.log('[WatchList] Error loading trade data:', error);
+    }
+  };
 
   const loadSymbolList = async () => {
     try {
@@ -115,6 +207,7 @@ const WatchList: React.FC = () => {
 
   const renderStockItem = ({ item }: { item: WatchedStock }) => {
     const changeColor = (item.change || 0) >= 0 ? '#00ff88' : '#ff4444';
+    const trades = tradeData.get(item.symbol.toUpperCase());
     
     return (
       <View style={styles.stockCard}>
@@ -134,6 +227,30 @@ const WatchList: React.FC = () => {
               <View style={styles.stockNameContainer}>
                 <Text style={styles.symbolText}>{item.symbol}</Text>
                 <Text style={styles.nameText}>{item.name}</Text>
+                {trades && (
+                  <View style={styles.tradesInfoContainer}>
+                    {trades.insiderPurchases > 0 && trades.mostRecentInsiderPurchaseDate && (
+                      <Text style={[styles.tradeText, { color: '#22c55e' }]}>
+                        {trades.insiderPurchases} Insider Buy{trades.insiderPurchases > 1 ? 's' : ''} ({trades.mostRecentInsiderPurchaseDate})
+                      </Text>
+                    )}
+                    {trades.insiderSales > 0 && trades.mostRecentInsiderSaleDate && (
+                      <Text style={[styles.tradeText, { color: '#ef4444' }]}>
+                        {trades.insiderSales} Insider Sale{trades.insiderSales > 1 ? 's' : ''} ({trades.mostRecentInsiderSaleDate})
+                      </Text>
+                    )}
+                    {trades.congressPurchases > 0 && trades.mostRecentCongressPurchaseDate && (
+                      <Text style={[styles.tradeText, { color: '#22c55e' }]}>
+                        {trades.congressPurchases} Congress Buy{trades.congressPurchases > 1 ? 's' : ''} ({trades.mostRecentCongressPurchaseDate})
+                      </Text>
+                    )}
+                    {trades.congressSales > 0 && trades.mostRecentCongressSaleDate && (
+                      <Text style={[styles.tradeText, { color: '#ef4444' }]}>
+                        {trades.congressSales} Congress Sale{trades.congressSales > 1 ? 's' : ''} ({trades.mostRecentCongressSaleDate})
+                      </Text>
+                    )}
+                  </View>
+                )}
               </View>
               
               {item.currentPrice !== undefined && (
@@ -336,6 +453,14 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
+  tradesInfoContainer: {
+    marginTop: 4,
+  },
+  tradeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
   symbolText: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -362,10 +487,6 @@ const styles = StyleSheet.create({
   starButton: {
     padding: 2,
     marginLeft: 8,
-  },
-  starIcon: {
-    fontSize: 24,
-    color: '#ffffff',
   },
   disclaimerSection: {
     paddingHorizontal: 15,
