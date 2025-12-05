@@ -858,7 +858,7 @@ export default function AIPicks({ navigation }: any) {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Stock Filtering</Text>
                 <Text style={styles.sectionText}>
-                  Only stocks from your blue-chip list and watch list are analyzed. This ensures you see opportunities in companies you're already interested in or have identified as quality investments. Data includes the previous 30 days of activity.
+                  Only stocks from your blue-chip list and watch list are analyzed. This ensures you see opportunities in companies you're already interested in or have identified as quality investments.
                 </Text>
               </View>
 

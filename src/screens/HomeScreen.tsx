@@ -11,7 +11,8 @@ import {
   StatusBar,
   Share,
   Modal,
-  Linking
+  Linking,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
@@ -1002,7 +1003,13 @@ const HomeScreen = () => {
   // Handle menu actions
   const handleReviewApp = () => {
     setShowMenuModal(false);
-    Linking.openURL('https://play.google.com/store/apps/details?id=com.stockfinderai');
+    
+    // Platform-specific store URLs
+    const storeUrl = Platform.OS === 'ios'
+      ? 'https://apps.apple.com/app/id6756030906'
+      : 'https://play.google.com/store/apps/details?id=com.stockfinderai';
+    
+    Linking.openURL(storeUrl);
   };
 
   const handleDonate = () => {
