@@ -1037,9 +1037,12 @@ export default function AIPicks({ navigation }: any) {
                   </View>
                   {selectedStock.mostRecentInsiderDate && (() => {
                     const date = new Date(selectedStock.mostRecentInsiderDate);
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const year = date.getFullYear();
                     return (
                       <Text style={styles.dateRangeText}>
-                        Most recent: {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        Most recent: {month}/{day}/{year}
                       </Text>
                     );
                   })()}
@@ -1058,9 +1061,12 @@ export default function AIPicks({ navigation }: any) {
                   </View>
                   {selectedStock.mostRecentCongressDate && (() => {
                     const date = new Date(selectedStock.mostRecentCongressDate);
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const year = date.getFullYear();
                     return (
                       <Text style={styles.dateRangeText}>
-                        Most recent: {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        Most recent: {month}/{day}/{year}
                       </Text>
                     );
                   })()}
@@ -1135,9 +1141,12 @@ export default function AIPicks({ navigation }: any) {
                   </View>
                   {selectedStock.mostRecentInsiderSaleDate && (() => {
                     const date = new Date(selectedStock.mostRecentInsiderSaleDate);
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const year = date.getFullYear();
                     return (
                       <Text style={styles.dateRangeText}>
-                        Most recent: {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        Most recent: {month}/{day}/{year}
                       </Text>
                     );
                   })()}
@@ -1156,9 +1165,12 @@ export default function AIPicks({ navigation }: any) {
                   </View>
                   {selectedStock.mostRecentCongressSaleDate && (() => {
                     const date = new Date(selectedStock.mostRecentCongressSaleDate);
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const year = date.getFullYear();
                     return (
                       <Text style={styles.dateRangeText}>
-                        Most recent: {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        Most recent: {month}/{day}/{year}
                       </Text>
                     );
                   })()}

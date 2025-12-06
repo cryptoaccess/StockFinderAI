@@ -361,8 +361,8 @@ app.get('/api/insider-trades', async (req, res) => {
     
     const page = await browser.newPage();
     
-    // Navigate to OpenInsider.com - screener with 30 day trade date filter and 1000 results
-    await page.goto('http://openinsider.com/screener?s=&o=&pl=&ph=&ll=&lh=&fd=30&fdr=&td=30&tdr=&fdlyl=&fdlyh=&daysago=&xp=1&xs=1&vl=&vh=&ocl=&och=&sic1=-1&sicl=100&sich=9999&grp=0&nfl=&nfh=&nil=&nih=&nol=&noh=&v2l=&v2h=&oc2l=&oc2h=&sortcol=1&cnt=1000&page=1', {
+    // Navigate to OpenInsider.com - screener with 30 day trade date filter and 1500 results
+    await page.goto('http://openinsider.com/screener?s=&o=&pl=&ph=&ll=&lh=&fd=30&fdr=&td=30&tdr=&fdlyl=&fdlyh=&daysago=&xp=1&xs=1&vl=&vh=&ocl=&och=&sic1=-1&sicl=100&sich=9999&grp=0&nfl=&nfh=&nil=&nih=&nol=&noh=&v2l=&v2h=&oc2l=&oc2h=&sortcol=1&cnt=1500&page=1', {
       waitUntil: 'networkidle0',
       timeout: 60000
     });

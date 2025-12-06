@@ -911,13 +911,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   newsDate: {
-    color: '#ff4444',
+    color: '#00d4ff',
     fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 2,
   },
   newsHeadline: {
-    color: '#7dd3fc',
+    color: '#ffffff',
     fontSize: 13,
     textDecorationLine: 'underline',
   },

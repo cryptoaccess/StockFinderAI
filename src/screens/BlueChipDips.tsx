@@ -665,10 +665,8 @@ const BlueChipDips: React.FC = () => {
                         onPress={() => Linking.openURL(headline.link)}
                         style={styles.headlineItem}
                       >
-                        <Text style={styles.headlineText}>
-                          <Text style={styles.headlineDate}>[{headline.pubDate}] </Text>
-                          {headline.title}
-                        </Text>
+                        <Text style={styles.headlineDate}>{headline.pubDate}</Text>
+                        <Text style={styles.headlineText}>{headline.title}</Text>
                       </TouchableOpacity>
                     ))
                   ) : (
@@ -1170,11 +1168,13 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 212, 255, 0.1)',
+    flexDirection: 'column',
   },
   headlineDate: {
-    fontSize: 11,
-    color: '#ef4444',
-    marginBottom: 4,
+    fontSize: 12,
+    color: '#00d4ff',
+    fontWeight: 'bold',
+    marginBottom: 2,
   },
   headlineText: {
     fontSize: 13,

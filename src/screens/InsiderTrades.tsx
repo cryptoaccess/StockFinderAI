@@ -44,6 +44,33 @@ export default function InsiderTrades({ navigation }: any) {
   const route = useRoute();
   // @ts-ignore
   const { preSelectedSymbol } = route.params || {};
+
+  // Format date from YYYY-MM-DD to MM/DD/YYYY
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr || dateStr === 'N/A') return dateStr;
+    
+    // Handle YYYY-MM-DD format (from OpenInsider)
+    if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const year = parts[0];
+        const month = parts[1].padStart(2, '0');
+        const day = parts[2].padStart(2, '0');
+        return `${month}/${day}/${year}`;
+      }
+    }
+    
+    // Handle MM/DD/YYYY format (already correct)
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3 && parts[2].length === 4) {
+        return dateStr; // Already in MM/DD/YYYY format
+      }
+    }
+    
+    return dateStr;
+  };
+
     // Calculate the time span of all trades
     const getTradeTimeSpan = () => {
       if (!trades || trades.length === 0) return null;
@@ -61,7 +88,13 @@ export default function InsiderTrades({ navigation }: any) {
       if (dates.length === 0) return null;
       const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
       const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
-      return { minDate, maxDate };
+      const formatDisplayDate = (date: Date) => {
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        return `${month}/${day}/${year}`;
+      };
+      return { minDate: formatDisplayDate(minDate), maxDate: formatDisplayDate(maxDate) };
     };
   const [trades, setTrades] = useState<InsiderTrade[]>([]);
   const [groupedTrades, setGroupedTrades] = useState<GroupedInsiderTrade[]>([]);
@@ -308,7 +341,7 @@ export default function InsiderTrades({ navigation }: any) {
     const isWatched = watchList.some(w => w.symbol === item.ticker);
     
     // Get most recent trade date
-    const mostRecentDate = item.trades.length > 0 ? item.trades[0].transactionDate : 'N/A';
+    const mostRecentDate = item.trades.length > 0 ? formatDate(item.trades[0].transactionDate) : 'N/A';
 
     return (
       <View style={styles.groupCard}>
@@ -354,7 +387,7 @@ export default function InsiderTrades({ navigation }: any) {
                     <View style={styles.detailRowHeader}>
                       <View style={styles.dateWithType}>
                         <Text style={[styles.detailType, { color: '#22c55e' }]}>{trade.transactionType}</Text>
-                        <Text style={styles.detailDate}> - {trade.transactionDate}</Text>
+                        <Text style={styles.detailDate}> - {formatDate(trade.transactionDate)}</Text>
                       </View>
                       <Text style={styles.detailValue}>{trade.value.replace(/^[-–—+]+\s*/, '')}</Text>
                     </View>
@@ -374,7 +407,7 @@ export default function InsiderTrades({ navigation }: any) {
                     <View style={styles.detailRowHeader}>
                       <View style={styles.dateWithType}>
                         <Text style={[styles.detailType, { color: '#ef4444' }]}>{trade.transactionType}</Text>
-                        <Text style={styles.detailDate}> - {trade.transactionDate}</Text>
+                        <Text style={styles.detailDate}> - {formatDate(trade.transactionDate)}</Text>
                       </View>
                       <Text style={styles.detailValue}>{trade.value.replace(/^[-–—+]+\s*/, '')}</Text>
                     </View>
@@ -408,10 +441,10 @@ export default function InsiderTrades({ navigation }: any) {
       <View style={styles.header}>
         <Text style={styles.title}>Insider Trades</Text>
         <Text style={styles.subtitle}>
-          The most recent 1000 filings of SEC Form 4:{'\n'}{saleCount} sales and {purchaseCount} purchases by company insiders.
+          The most recent 1500 filings of SEC Form 4:{' '}{ }{saleCount} sales and {purchaseCount} purchases by company insiders.
         </Text>
         {tradeSpan && (
-          <Text style={[styles.subtitle, { marginTop: 2 }]}>Time span: {tradeSpan.minDate.toLocaleDateString()} – {tradeSpan.maxDate.toLocaleDateString()}</Text>
+          <Text style={[styles.subtitle, { marginTop: 2 }]}>Time span: {tradeSpan.minDate} – {tradeSpan.maxDate}</Text>
         )}
         {(mostBoughtStocks || mostSoldStocks) && (
           <View style={[styles.popularStocksContainer, { flexWrap: 'wrap', flexDirection: 'column', alignItems: 'flex-start' }]}> 

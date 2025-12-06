@@ -48,6 +48,29 @@ const WatchList: React.FC = () => {
     loadTradeData();
   }, []);
 
+  // Format date to MM/DD/YYYY
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr || dateStr === 'N/A') return dateStr;
+    
+    // Handle YYYY-MM-DD format (from Insider trades)
+    if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const year = parts[0];
+        const month = parts[1].padStart(2, '0');
+        const day = parts[2].padStart(2, '0');
+        return `${month}/${day}/${year}`;
+      }
+    }
+    
+    // Handle MM/DD/YYYY format (already correct from Congress trades)
+    if (dateStr.includes('/')) {
+      return dateStr;
+    }
+    
+    return dateStr;
+  };
+
   const loadTradeData = async () => {
     try {
       const tradesMap = new Map<string, TradeInfo>();
@@ -231,22 +254,22 @@ const WatchList: React.FC = () => {
                   <View style={styles.tradesInfoContainer}>
                     {trades.insiderPurchases > 0 && trades.mostRecentInsiderPurchaseDate && (
                       <Text style={[styles.tradeText, { color: '#22c55e' }]}>
-                        {trades.insiderPurchases} Insider Buy{trades.insiderPurchases > 1 ? 's' : ''} ({trades.mostRecentInsiderPurchaseDate})
+                        {trades.insiderPurchases} Insider Buy{trades.insiderPurchases > 1 ? 's' : ''} ({formatDate(trades.mostRecentInsiderPurchaseDate)})
                       </Text>
                     )}
                     {trades.insiderSales > 0 && trades.mostRecentInsiderSaleDate && (
                       <Text style={[styles.tradeText, { color: '#ef4444' }]}>
-                        {trades.insiderSales} Insider Sale{trades.insiderSales > 1 ? 's' : ''} ({trades.mostRecentInsiderSaleDate})
+                        {trades.insiderSales} Insider Sale{trades.insiderSales > 1 ? 's' : ''} ({formatDate(trades.mostRecentInsiderSaleDate)})
                       </Text>
                     )}
                     {trades.congressPurchases > 0 && trades.mostRecentCongressPurchaseDate && (
                       <Text style={[styles.tradeText, { color: '#22c55e' }]}>
-                        {trades.congressPurchases} Congress Buy{trades.congressPurchases > 1 ? 's' : ''} ({trades.mostRecentCongressPurchaseDate})
+                        {trades.congressPurchases} Congress Buy{trades.congressPurchases > 1 ? 's' : ''} ({formatDate(trades.mostRecentCongressPurchaseDate)})
                       </Text>
                     )}
                     {trades.congressSales > 0 && trades.mostRecentCongressSaleDate && (
                       <Text style={[styles.tradeText, { color: '#ef4444' }]}>
-                        {trades.congressSales} Congress Sale{trades.congressSales > 1 ? 's' : ''} ({trades.mostRecentCongressSaleDate})
+                        {trades.congressSales} Congress Sale{trades.congressSales > 1 ? 's' : ''} ({formatDate(trades.mostRecentCongressSaleDate)})
                       </Text>
                     )}
                   </View>
