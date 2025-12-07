@@ -389,9 +389,9 @@ const styles = StyleSheet.create({
     marginBottom: -4,
   },
   starIcon: {
-    fontSize: 18,
+    fontSize: 24,
     color: '#7dd3fc',
-    lineHeight: 18,
+    lineHeight: 24,
   },
   searchButton: {
     backgroundColor: 'rgba(0, 212, 255, 0.2)',

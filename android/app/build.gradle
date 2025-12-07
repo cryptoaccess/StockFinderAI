@@ -82,8 +82,8 @@ android {
         applicationId "com.stockfinderai"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 13
-        versionName "0.9.7"
+        versionCode 14
+        versionName "0.9.8"
         }
     signingConfigs {
         debug {

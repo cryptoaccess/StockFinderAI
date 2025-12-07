@@ -914,7 +914,7 @@ const HomeScreen = () => {
       const androidUrl = 'https://play.google.com/store/apps/details?id=com.stockfinderai';
       
       const result = await Share.share({
-        message: `Check out StockFinderAI - Tracks insider trades and price dips, with no registration or account!\n\niPhone: ${iosUrl}\nAndroid: ${androidUrl}`,
+        message: `Check out StockFinderAI - Track insider trades and price dips, with no registration or account!\n\niPhone: ${iosUrl}\nAndroid: ${androidUrl}`,
         title: 'StockFinderAI - Smart Stock Research',
       });
 
