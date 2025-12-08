@@ -1201,7 +1201,7 @@ const HomeScreen = () => {
               />
               <NavButton 
                 title="AI Picks" 
-                icon="🦾"
+                icon="💡"
                 onPress={() => {
                   // @ts-ignore
                   navigation.navigate('AIPicks');
