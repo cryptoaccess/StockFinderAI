@@ -9,6 +9,8 @@ import {
   RefreshControl,
   Modal,
   ScrollView,
+  Share,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -793,6 +795,45 @@ export default function AIPicks({ navigation }: any) {
     );
   };
 
+  const shareAIPicks = async () => {
+    try {
+      // Get top 3 picks
+      const topPicks = picks.slice(0, 3);
+      
+      // Build the message
+      let message = "📈 StockFinderAI - Top AI Picks\n\n";
+      message += "Stocks ranked by recent insider and Congress trading:\n\n";
+      
+      topPicks.forEach((pick, index) => {
+        message += `${index + 1}. ${pick.ticker} - AI Score: ${Math.round(pick.score)}\n`;
+        
+        // Add factors (reasons) as bullets
+        const reasons = pick.reasons || [];
+        reasons.forEach(reason => {
+          message += `   • ${reason}\n`;
+        });
+        
+        message += '\n';
+      });
+      
+      message += "---\n";
+      message += "Download StockFinderAI - Track insider trades and price dips!\n\n";
+      message += "iPhone: https://apps.apple.com/us/app/stockfinderai/id6756030906\n";
+      message += "Android: https://play.google.com/store/apps/details?id=com.stockfinderai";
+      
+      const result = await Share.share({
+        message: message,
+        title: 'StockFinderAI - Top AI Picks',
+      });
+
+      if (result.action === Share.sharedAction) {
+        console.log('AI Picks shared successfully');
+      }
+    } catch (error) {
+      console.log('Error sharing AI Picks:', error);
+    }
+  };
+
   if (loading && picks.length === 0) {
     return (
       <View style={styles.container}>
@@ -823,12 +864,20 @@ export default function AIPicks({ navigation }: any) {
         <Text style={styles.subtitle}>
           Blue-chip stocks and your Watch List stocks ranked by recent insider and Congress purchases.
         </Text>
-        <TouchableOpacity
-          style={styles.rankingsButton}
-          onPress={() => setShowRankingsModal(true)}
-        >
-          <Text style={styles.rankingsButtonText}>Rankings Info</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={styles.rankingsButton}
+            onPress={() => setShowRankingsModal(true)}
+          >
+            <Text style={styles.rankingsButtonText}>Rankings Info</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.sharePicksButton}
+            onPress={shareAIPicks}
+          >
+            <Text style={styles.sharePicksButtonText}>Share AI Picks</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <Modal
@@ -1416,6 +1465,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 10,
+  },
   rankingsButton: {
     backgroundColor: 'rgba(0, 212, 255, 0.15)',
     borderRadius: 8,
@@ -1423,10 +1479,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: '#00d4ff',
-    marginTop: 6,
-    alignSelf: 'center',
+    flex: 1,
+    alignItems: 'center',
   },
   rankingsButtonText: {
+    color: '#00d4ff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  sharePicksButton: {
+    backgroundColor: 'rgba(0, 212, 255, 0.15)',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#00d4ff',
+    flex: 1,
+    alignItems: 'center',
+  },
+  sharePicksButtonText: {
     color: '#00d4ff',
     fontSize: 13,
     fontWeight: '600',

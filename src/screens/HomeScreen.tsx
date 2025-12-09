@@ -29,6 +29,7 @@ const HomeScreen = () => {
   const navigation = useNavigation();
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   const [showMenuModal, setShowMenuModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   
   // Store the full dataset
   const [fullMarketData, setFullMarketData] = useState<{
@@ -862,7 +863,72 @@ const HomeScreen = () => {
     fetchAllMarketData(); // Full fetch on initial load
     fetchSymbolList(); // Fetch stock symbols for Stock Search
     preloadAIPicksData(); // Preload AI Picks data in background
+    checkAndPromptReview(); // Check if we should show review prompt
   }, []);
+
+  // Check and prompt for review after app opens
+  const checkAndPromptReview = async () => {
+    try {
+      const appOpenCountStr = await AsyncStorage.getItem('appOpenCount');
+      const reviewPromptShownStr = await AsyncStorage.getItem('reviewPromptShown');
+      const remindLaterCountStr = await AsyncStorage.getItem('remindLaterCount');
+      
+      let appOpenCount = appOpenCountStr ? parseInt(appOpenCountStr) : 0;
+      const reviewPromptShown = reviewPromptShownStr === 'true';
+      let remindLaterCount = remindLaterCountStr ? parseInt(remindLaterCountStr) : 0;
+      
+      // Increment app open count
+      appOpenCount += 1;
+      await AsyncStorage.setItem('appOpenCount', appOpenCount.toString());
+      
+      // Show review prompt after 3 opens (first time) or 5 opens after "Remind me later"
+      const shouldShowReview = (!reviewPromptShown && appOpenCount >= 3) || 
+                               (reviewPromptShown && remindLaterCount > 0 && appOpenCount >= remindLaterCount + 5);
+      
+      if (shouldShowReview) {
+        // Small delay so it doesn't appear immediately
+        setTimeout(() => {
+          setShowReviewModal(true);
+        }, 2000);
+      }
+    } catch (error) {
+      console.log('Error checking review prompt:', error);
+    }
+  };
+
+  // Handle review button click
+  const handleLeaveReview = async () => {
+    try {
+      const reviewUrl = Platform.OS === 'ios' 
+        ? 'https://apps.apple.com/app/id6756030906?action=write-review'
+        : 'https://play.google.com/store/apps/details?id=com.stockfinderai&showAllReviews=true';
+      
+      await Linking.openURL(reviewUrl);
+      
+      // Mark that review prompt was shown and close modal
+      await AsyncStorage.setItem('reviewPromptShown', 'true');
+      await AsyncStorage.setItem('remindLaterCount', '0'); // Reset remind later count
+      setShowReviewModal(false);
+    } catch (error) {
+      console.log('Error opening review URL:', error);
+      Alert.alert('Error', 'Could not open review page. Please try again later.');
+    }
+  };
+
+  // Handle "Remind me later" button click
+  const handleRemindLater = async () => {
+    try {
+      const appOpenCountStr = await AsyncStorage.getItem('appOpenCount');
+      const appOpenCount = appOpenCountStr ? parseInt(appOpenCountStr) : 0;
+      
+      // Mark that we've shown the prompt and save the current count
+      await AsyncStorage.setItem('reviewPromptShown', 'true');
+      await AsyncStorage.setItem('remindLaterCount', appOpenCount.toString());
+      setShowReviewModal(false);
+    } catch (error) {
+      console.log('Error handling remind later:', error);
+    }
+  };
 
   // Check if user has accepted disclaimer
   const checkDisclaimerAcceptance = async () => {
@@ -1084,6 +1150,35 @@ const HomeScreen = () => {
         </View>
       </Modal>
 
+      {/* Review Prompt Modal */}
+      <Modal
+        visible={showReviewModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowReviewModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.reviewModalContent}>
+            <Text style={styles.reviewModalTitle}>⭐ Enjoying StockFinderAI?</Text>
+            <Text style={styles.reviewModalText}>
+              If you like this free app, please leave a review. It helps!
+            </Text>
+            <TouchableOpacity 
+              style={styles.reviewButton} 
+              onPress={handleLeaveReview}
+            >
+              <Text style={styles.reviewButtonText}>Leave a Review</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.remindLaterButton} 
+              onPress={handleRemindLater}
+            >
+              <Text style={styles.remindLaterButtonText}>Remind Me Later</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Menu Modal */}
       <Modal
         visible={showMenuModal}
@@ -1177,8 +1272,8 @@ const HomeScreen = () => {
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity style={styles.shareButton} onPress={shareApp}>
-                  <Text style={styles.shareButtonIcon}>📤</Text>
-                  <Text style={styles.shareButtonText}>Share</Text>
+                  <Text style={styles.shareButtonIcon}>💬</Text>
+                  <Text style={styles.shareButtonText}>Share app</Text>
                 </TouchableOpacity>
               </View>
 
@@ -1623,6 +1718,62 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(0, 212, 255, 0.2)',
     marginHorizontal: 10,
+  },
+  reviewModalContent: {
+    backgroundColor: '#1e3a5f',
+    borderRadius: 12,
+    padding: 24,
+    width: '85%',
+    maxWidth: 360,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  reviewModalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#00d4ff',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  reviewModalText: {
+    fontSize: 16,
+    color: '#cbd5e1',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  reviewButton: {
+    backgroundColor: '#00d4ff',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reviewButtonText: {
+    color: '#0a1929',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  remindLaterButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#00d4ff',
+  },
+  remindLaterButtonText: {
+    color: '#00d4ff',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

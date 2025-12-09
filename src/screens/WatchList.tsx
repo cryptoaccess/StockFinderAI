@@ -7,6 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
+  Modal,
+  Share,
+  Platform,
+  Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -41,12 +45,62 @@ const WatchList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [symbolList, setSymbolList] = useState<Array<{symbol: string, name: string}>>([]);
   const [tradeData, setTradeData] = useState<Map<string, TradeInfo>>(new Map());
+  const [showSharePrompt, setShowSharePrompt] = useState(false);
 
   useEffect(() => {
     loadWatchList();
     loadSymbolList();
     loadTradeData();
   }, []);
+
+  // Check if we should show share prompt when watch list updates
+  useEffect(() => {
+    checkSharePrompt();
+  }, [watchedStocks]);
+
+  const checkSharePrompt = async () => {
+    try {
+      // Only check if we have exactly 5 stocks
+      if (watchedStocks.length === 5) {
+        const sharePromptShown = await AsyncStorage.getItem('watchListSharePromptShown');
+        if (!sharePromptShown) {
+          // Small delay so it doesn't appear immediately
+          setTimeout(() => {
+            setShowSharePrompt(true);
+          }, 1000);
+        }
+      }
+    } catch (error) {
+      console.log('Error checking share prompt:', error);
+    }
+  };
+
+  const handleShareApp = async () => {
+    try {
+      const iosUrl = 'https://apps.apple.com/us/app/stockfinderai/id6756030906';
+      const androidUrl = 'https://play.google.com/store/apps/details?id=com.stockfinderai';
+      
+      const result = await Share.share({
+        message: `Check out StockFinderAI - Track insider trades and price dips, with no registration or account!\n\niPhone: ${iosUrl}\nAndroid: ${androidUrl}`,
+        title: 'StockFinderAI - Smart Stock Research',
+      });
+
+      // Mark that share prompt was shown
+      await AsyncStorage.setItem('watchListSharePromptShown', 'true');
+      setShowSharePrompt(false);
+    } catch (error) {
+      console.log('Error sharing app:', error);
+    }
+  };
+
+  const handleNoThanks = async () => {
+    try {
+      await AsyncStorage.setItem('watchListSharePromptShown', 'true');
+      setShowSharePrompt(false);
+    } catch (error) {
+      console.log('Error handling no thanks:', error);
+    }
+  };
 
   // Format date to MM/DD/YYYY
   const formatDate = (dateStr: string): string => {
@@ -304,6 +358,35 @@ const WatchList: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      {/* Share Prompt Modal */}
+      <Modal
+        visible={showSharePrompt}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSharePrompt(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.shareModalContent}>
+            <Text style={styles.shareModalTitle}>Congrats! You've added 5 stocks to your watch list.</Text>
+            <Text style={styles.shareModalText}>
+              Consider sharing this app with other investors. (This won't share your stocks.)
+            </Text>
+            <TouchableOpacity 
+              style={styles.shareButton} 
+              onPress={handleShareApp}
+            >
+              <Text style={styles.shareButtonText}>Share app</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.noThanksButton} 
+              onPress={handleNoThanks}
+            >
+              <Text style={styles.noThanksButtonText}>No thanks</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.titleSection}>
         <Text style={styles.screenTitle}>Watch List ({watchedStocks.length})</Text>
         <Text style={styles.subtitle}>
@@ -527,6 +610,68 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
     lineHeight: 16,
     marginBottom: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shareModalContent: {
+    backgroundColor: '#1e3a5f',
+    borderRadius: 12,
+    padding: 24,
+    width: '85%',
+    maxWidth: 360,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  shareModalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#00d4ff',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  shareModalText: {
+    fontSize: 16,
+    color: '#cbd5e1',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  shareButton: {
+    backgroundColor: '#00d4ff',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  shareButtonText: {
+    color: '#0a1929',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  noThanksButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#00d4ff',
+  },
+  noThanksButtonText: {
+    color: '#00d4ff',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 
