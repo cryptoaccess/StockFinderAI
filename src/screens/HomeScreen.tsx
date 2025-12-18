@@ -1226,11 +1226,13 @@ const HomeScreen = () => {
             <View style={styles.hamburgerLine} />
             <View style={styles.hamburgerLine} />
           </TouchableOpacity>
-          <Text style={styles.title}>StockFinderAI</Text>
-          <Text style={styles.subtitle}>Market Intelligence Dashboard</Text>
-          {lastUpdate && (
-            <Text style={styles.updateTime}>Last updated: {lastUpdate}</Text>
-          )}
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>StockFinderAI</Text>
+            <Text style={styles.subtitle}>Market Intelligence Dashboard</Text>
+            {lastUpdate && (
+              <Text style={styles.updateTime}>Last updated: {lastUpdate}</Text>
+            )}
+          </View>
         </View>
 
         {/* Loading indicator */}
@@ -1374,10 +1376,17 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 212, 255, 0.3)',
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 36,
@@ -1387,6 +1396,7 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 212, 255, 0.5)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
@@ -1394,6 +1404,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
     letterSpacing: 3,
     textTransform: 'uppercase',
+    textAlign: 'center',
   },
   updateTime: {
     fontSize: 12,

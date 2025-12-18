@@ -1066,7 +1066,8 @@ const styles = StyleSheet.create({
     color: '#00d4ff',
   },
   starButton: {
-    padding: 2,
+    padding: 0,
+    marginTop: -4,
   },
   starText: {
     fontSize: 20,

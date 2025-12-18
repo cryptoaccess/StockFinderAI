@@ -8,6 +8,48 @@ import axios from 'axios';
 
 const screenWidth = require('react-native').Dimensions.get('window').width;
 
+const shouldShowLast = () => {
+  const now = new Date();
+  // Get EST time by formatting as string in EST timezone, then parse individual components
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(now);
+  let day = -1;
+  let hours = 0;
+  let minutes = 0;
+  
+  for (const part of parts) {
+    if (part.type === 'weekday') {
+      const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      day = weekdays.indexOf(part.value);
+    } else if (part.type === 'hour') {
+      hours = parseInt(part.value, 10);
+    } else if (part.type === 'minute') {
+      minutes = parseInt(part.value, 10);
+    }
+  }
+  
+  // Weekend (Saturday=6, Sunday=0)
+  if (day === 0 || day === 6) {
+    return true;
+  }
+  
+  // Weekday before 9:30 AM EST (market opens at 9:30 AM)
+  if (day >= 1 && day <= 5) {
+    if (hours < 9 || (hours === 9 && minutes < 30)) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
 // Define the Stock type
 type Stock = {
   symbol: string;
@@ -558,7 +600,7 @@ const StockSearch = () => {
                       marginLeft: 12
                     }
                   ]}>
-                    Today: {selectedStock.change >= 0 ? '+' : ''}{selectedStock.change.toFixed(2)}%
+                    {shouldShowLast() ? 'Last:' : 'Today:'} {selectedStock.change >= 0 ? '+' : ''}{selectedStock.change.toFixed(2)}%
                   </Text>
                 )}
               </View>

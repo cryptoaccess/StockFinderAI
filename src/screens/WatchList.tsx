@@ -11,6 +11,8 @@ import {
   Share,
   Platform,
   Linking,
+  TextInput,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -20,12 +22,56 @@ import InsiderTradesService from '../services/InsiderTradesService';
 
 const screenWidth = Dimensions.get('window').width;
 
+const shouldShowLast = () => {
+  const now = new Date();
+  // Get EST time by formatting as string in EST timezone, then parse individual components
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(now);
+  let day = -1;
+  let hours = 0;
+  let minutes = 0;
+  
+  for (const part of parts) {
+    if (part.type === 'weekday') {
+      const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      day = weekdays.indexOf(part.value);
+    } else if (part.type === 'hour') {
+      hours = parseInt(part.value, 10);
+    } else if (part.type === 'minute') {
+      minutes = parseInt(part.value, 10);
+    }
+  }
+  
+  // Weekend (Saturday=6, Sunday=0)
+  if (day === 0 || day === 6) {
+    return true;
+  }
+  
+  // Weekday before 9:30 AM EST (market opens at 9:30 AM)
+  if (day >= 1 && day <= 5) {
+    if (hours < 9 || (hours === 9 && minutes < 30)) {
+      return true;
+    }
+  }
+  
+  return false;
+};
+
 interface WatchedStock {
   symbol: string;
   name: string;
   currentPrice?: number;
   change?: number;
   changePercent?: number;
+  entryPrice?: number;
+  shares?: number;
 }
 
 interface TradeInfo {
@@ -46,6 +92,12 @@ const WatchList: React.FC = () => {
   const [symbolList, setSymbolList] = useState<Array<{symbol: string, name: string}>>([]);
   const [tradeData, setTradeData] = useState<Map<string, TradeInfo>>(new Map());
   const [showSharePrompt, setShowSharePrompt] = useState(false);
+  const [editingSymbol, setEditingSymbol] = useState<string | null>(null);
+  const [editingCompanyName, setEditingCompanyName] = useState<string>('');
+  const [entryPriceInput, setEntryPriceInput] = useState('');
+  const [sharesInput, setSharesInput] = useState('');
+  const [showRemovePrompt, setShowRemovePrompt] = useState(false);
+  const [stockToRemove, setStockToRemove] = useState<{symbol: string, price: number} | null>(null);
 
   useEffect(() => {
     loadWatchList();
@@ -282,9 +334,75 @@ const WatchList: React.FC = () => {
     }
   };
 
+  const handleEditEntryPrice = (symbol: string, currentEntryPrice?: number) => {
+    const stock = watchedStocks.find(s => s.symbol === symbol);
+    setEditingSymbol(symbol);
+    setEditingCompanyName(stock?.name || '');
+    setEntryPriceInput(currentEntryPrice ? currentEntryPrice.toString() : '');
+    setSharesInput(stock?.shares ? stock.shares.toString() : '');
+  };
+
+  const saveEntryPrice = async () => {
+    if (!editingSymbol) return;
+    
+    const price = parseFloat(entryPriceInput);
+    if (isNaN(price) || price <= 0) {
+      Alert.alert('Invalid Price', 'Please enter a valid price greater than 0');
+      return;
+    }
+
+    const shares = parseFloat(sharesInput);
+    if (isNaN(shares) || shares <= 0) {
+      Alert.alert('Invalid Shares', 'Please enter a valid number of shares greater than 0');
+      return;
+    }
+
+    try {
+      const updatedList = watchedStocks.map(stock => 
+        stock.symbol === editingSymbol 
+          ? { ...stock, entryPrice: price, shares: shares }
+          : stock
+      );
+      setWatchedStocks(updatedList);
+      await AsyncStorage.setItem('watchList', JSON.stringify(updatedList));
+      setEditingSymbol(null);
+      setEntryPriceInput('');
+      setSharesInput('');
+    } catch (error) {
+      console.log('Error saving entry price:', error);
+    }
+  };
+
+  const removeEntryPrice = async (symbol: string) => {
+    try {
+      const updatedList = watchedStocks.map(stock => 
+        stock.symbol === symbol 
+          ? { ...stock, entryPrice: undefined, shares: undefined }
+          : stock
+      );
+      setWatchedStocks(updatedList);
+      await AsyncStorage.setItem('watchList', JSON.stringify(updatedList));
+    } catch (error) {
+      console.log('Error removing entry price:', error);
+    }
+  };
+
   const renderStockItem = ({ item }: { item: WatchedStock }) => {
     const changeColor = (item.change || 0) >= 0 ? '#00ff88' : '#ff4444';
     const trades = tradeData.get(item.symbol.toUpperCase());
+    
+    // Calculate entry price gain/loss
+    let entryGain = 0;
+    let entryGainPercent = 0;
+    let totalGain = 0;
+    if (item.entryPrice && item.currentPrice) {
+      entryGain = item.currentPrice - item.entryPrice;
+      entryGainPercent = (entryGain / item.entryPrice) * 100;
+      if (item.shares) {
+        totalGain = entryGain * item.shares;
+      }
+    }
+    const entryColor = entryGain >= 0 ? '#00ff88' : '#ff4444';
     
     return (
       <View style={styles.stockCard}>
@@ -302,7 +420,15 @@ const WatchList: React.FC = () => {
           >
             <View style={styles.stockInfoRow}>
               <View style={styles.stockNameContainer}>
-                <Text style={styles.symbolText}>{item.symbol}</Text>
+                <View style={styles.symbolRow}>
+                  <Text style={styles.symbolText}>{item.symbol}</Text>
+                  <TouchableOpacity
+                    style={styles.starButton}
+                    onPress={() => removeFromWatchList(item.symbol)}
+                  >
+                    <Text style={styles.starIcon}>★</Text>
+                  </TouchableOpacity>
+                </View>
                 <Text style={styles.nameText}>{item.name}</Text>
                 {trades && (
                   <View style={styles.tradesInfoContainer}>
@@ -336,20 +462,38 @@ const WatchList: React.FC = () => {
                     Current: ${item.currentPrice.toFixed(2)}
                   </Text>
                   <Text style={[styles.changeText, { color: changeColor }]}>
-                    Today: {(item.change || 0) >= 0 ? '+' : ''}
+                    {shouldShowLast() ? 'Last:' : 'Today:'} {(item.change || 0) >= 0 ? '+' : ''}
                     {item.change?.toFixed(2)} ({(item.changePercent || 0) >= 0 ? '+' : ''}
                     {item.changePercent?.toFixed(1)}%)
                   </Text>
+                  <View style={styles.entryPriceSection}>
+                    {!item.entryPrice && (
+                      <TouchableOpacity 
+                        onPress={() => handleEditEntryPrice(item.symbol, item.entryPrice)}
+                      >
+                        <Text style={styles.editButtonText}>(Set entry price)</Text>
+                      </TouchableOpacity>
+                    )}
+                    {item.entryPrice && (
+                      <TouchableOpacity 
+                        style={styles.entryPriceContainer}
+                        onPress={() => {
+                          setStockToRemove({ symbol: item.symbol, price: item.entryPrice! });
+                          setShowRemovePrompt(true);
+                        }}
+                      >
+                        <Text style={styles.entryPriceLabel}>
+                          Entry: ${item.entryPrice.toFixed(2)} × {item.shares || 0} shares
+                        </Text>
+                        <Text style={[styles.entryGainText, { color: entryColor }]}>
+                          {totalGain >= 0 ? '+' : ''}${Math.round(totalGain)} ({entryGain >= 0 ? '+' : ''}{entryGainPercent.toFixed(1)}%)
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               )}
             </View>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.starButton}
-            onPress={() => removeFromWatchList(item.symbol)}
-          >
-            <Text style={styles.starIcon}>★</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -358,6 +502,116 @@ const WatchList: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      {/* Remove Entry Price Modal */}
+      <Modal
+        visible={showRemovePrompt}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowRemovePrompt(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.removeModalContent}>
+            <Text style={styles.removeModalTitle}>Remove Entry Price</Text>
+            <Text style={styles.removeModalText}>
+              Remove entry price of ${stockToRemove?.price.toFixed(2)} for {stockToRemove?.symbol}?
+            </Text>
+            <View style={styles.removeButtonRow}>
+              <TouchableOpacity 
+                style={styles.removeButton} 
+                onPress={() => {
+                  if (stockToRemove) {
+                    removeEntryPrice(stockToRemove.symbol);
+                  }
+                  setShowRemovePrompt(false);
+                  setStockToRemove(null);
+                }}
+              >
+                <Text style={styles.removeButtonText}>Remove</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.editRemoveButton} 
+                onPress={() => {
+                  if (stockToRemove) {
+                    handleEditEntryPrice(stockToRemove.symbol);
+                  }
+                  setShowRemovePrompt(false);
+                  setStockToRemove(null);
+                }}
+              >
+                <Text style={styles.editRemoveButtonText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.cancelRemoveButton} 
+                onPress={() => {
+                  setShowRemovePrompt(false);
+                  setStockToRemove(null);
+                }}
+              >
+                <Text style={styles.cancelRemoveButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Entry Price Edit Modal */}
+      <Modal
+        visible={editingSymbol !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setEditingSymbol(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.entryPriceModalContent}>
+            <Text style={styles.entryPriceModalTitle}>Set Entry Price for {editingSymbol}</Text>
+            <Text style={styles.entryPriceModalSubtitle}>{editingCompanyName}</Text>
+            <View style={styles.entryPriceInputContainer}>
+              <Text style={styles.dollarSign}>$</Text>
+              <TextInput
+                style={styles.entryPriceInput}
+                placeholder="Enter price (e.g., 150.00)"
+                placeholderTextColor="#7dd3fc"
+                keyboardType="decimal-pad"
+                value={entryPriceInput}
+                onChangeText={setEntryPriceInput}
+                autoFocus
+              />
+            </View>
+            <View style={styles.sharesInputContainer}>
+              <Text style={styles.sharesLabel}>#</Text>
+              <TextInput
+                style={styles.sharesInput}
+                placeholder="Enter shares (e.g., 100)"
+                placeholderTextColor="#7dd3fc"
+                keyboardType="decimal-pad"
+                value={sharesInput}
+                onChangeText={setSharesInput}
+              />
+            </View>
+            <View style={styles.entryPriceButtonRow}>
+              <TouchableOpacity 
+                style={styles.entrySaveButton} 
+                onPress={saveEntryPrice}
+              >
+                <Text style={styles.entrySaveButtonText}>Save</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.entryCancelButton} 
+                onPress={() => {
+                  setEditingSymbol(null);
+                  setEntryPriceInput('');
+                }}
+              >
+                <Text style={styles.entryCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.entryPriceDisclaimer}>
+              For tracking only. This app does not buy or sell stock.
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
       {/* Share Prompt Modal */}
       <Modal
         visible={showSharePrompt}
@@ -401,7 +655,7 @@ const WatchList: React.FC = () => {
           navigation.navigate('StockSearch', { symbolList });
         }}
       >
-        <Text style={styles.searchButtonText}>Search for Stocks 🔍</Text>
+        <Text style={styles.searchButtonText}>Search for Stocks</Text>
       </TouchableOpacity>
 
       {loading ? (
@@ -559,6 +813,12 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
+  symbolRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 2,
+  },
   tradesInfoContainer: {
     marginTop: 4,
   },
@@ -581,7 +841,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   priceText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#e2e8f0',
     marginBottom: 2,
@@ -591,8 +851,235 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   starButton: {
-    padding: 2,
+    padding: 0,
     marginLeft: 8,
+    marginTop: -4,
+  },
+  editButton: {
+    marginTop: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#00d4ff',
+  },
+  editButtonText: {
+    fontSize: 12,
+    color: '#7dd3fc',
+    textAlign: 'right',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  entryPriceSection: {
+    marginTop: 8,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    width: '100%',
+  },
+  entryPriceContainer: {
+    width: '100%',
+    alignItems: 'flex-end',
+  },
+  entryPriceLabel: {
+    fontSize: 12,
+    color: '#7dd3fc',
+    marginBottom: 2,
+    textAlign: 'right',
+  },
+  entryGainText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'right',
+  },
+  removeModalContent: {
+    backgroundColor: '#1e3a5f',
+    borderRadius: 12,
+    padding: 24,
+    width: '85%',
+    maxWidth: 360,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  removeModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ff4444',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  removeModalText: {
+    fontSize: 16,
+    color: '#cbd5e1',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  removeButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    flexWrap: 'wrap',
+  },
+  editRemoveButton: {
+    flex: 1,
+    minWidth: '30%',
+    backgroundColor: '#00d4ff',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  editRemoveButtonText: {
+    color: '#0a1929',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  removeButton: {
+    flex: 1,
+    minWidth: '30%',
+    backgroundColor: '#ff4444',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  removeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cancelRemoveButton: {
+    flex: 1,
+    minWidth: '30%',
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#00d4ff',
+  },
+  cancelRemoveButtonText: {
+    color: '#00d4ff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  entryPriceModalContent: {
+    backgroundColor: '#1e3a5f',
+    borderRadius: 12,
+    padding: 24,
+    width: '85%',
+    maxWidth: 360,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  entryPriceModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#00d4ff',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  entryPriceModalSubtitle: {
+    fontSize: 14,
+    color: '#cbd5e1',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  entryPriceInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    backgroundColor: '#0a1929',
+    borderWidth: 1,
+    borderColor: '#00d4ff',
+    borderRadius: 8,
+    paddingLeft: 12,
+    marginBottom: 12,
+  },
+  dollarSign: {
+    fontSize: 16,
+    color: '#00d4ff',
+    fontWeight: 'bold',
+    marginRight: 4,
+  },
+  entryPriceInput: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    padding: 12,
+    fontSize: 16,
+    color: '#fff',
+  },
+  sharesInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    backgroundColor: '#0a1929',
+    borderWidth: 1,
+    borderColor: '#00d4ff',
+    borderRadius: 8,
+    paddingLeft: 12,
+    marginBottom: 20,
+  },
+  sharesLabel: {
+    fontSize: 16,
+    color: '#00d4ff',
+    fontWeight: 'bold',
+    marginRight: 4,
+  },
+  sharesInput: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    padding: 12,
+    fontSize: 16,
+    color: '#fff',
+  },
+  entryPriceButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  entrySaveButton: {
+    flex: 1,
+    backgroundColor: '#00d4ff',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  entrySaveButtonText: {
+    color: '#0a1929',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  entryCancelButton: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#00d4ff',
+  },
+  entryCancelButtonText: {
+    color: '#00d4ff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  entryPriceDisclaimer: {
+    fontSize: 11,
+    color: '#7dd3fc',
+    textAlign: 'center',
+    marginTop: 16,
+    fontStyle: 'italic',
   },
   disclaimerSection: {
     paddingHorizontal: 15,

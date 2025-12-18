@@ -862,7 +862,7 @@ export default function AIPicks({ navigation }: any) {
       <View style={styles.header}>
         <Text style={styles.title}>AI Picks</Text>
         <Text style={styles.subtitle}>
-          Blue-chip stocks and your Watch List stocks ranked by recent insider and Congress purchases.
+          Blue-chip stocks and your Watch List stocks ranked by recent insider and Congress activity.
         </Text>
         <View style={styles.buttonRow}>
           <TouchableOpacity
