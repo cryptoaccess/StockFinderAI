@@ -24,8 +24,15 @@ function App() {
   
   // Prefetch congressional trades and insider trades data in background on app startup
   useEffect(() => {
-    CongressTradesService.prefetchTrades();
-    InsiderTradesService.prefetchTrades();
+    // Add small delay to ensure AsyncStorage is ready
+    setTimeout(() => {
+      CongressTradesService.prefetchTrades().catch(error => {
+        console.error('[App] Failed to prefetch Congress trades:', error);
+      });
+      InsiderTradesService.prefetchTrades().catch(error => {
+        console.error('[App] Failed to prefetch Insider trades:', error);
+      });
+    }, 500); // 500ms delay to let AsyncStorage initialize
   }, []);
   
   return (

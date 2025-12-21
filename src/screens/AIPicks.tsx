@@ -70,7 +70,7 @@ export default function AIPicks({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [watchList, setWatchList] = useState<Array<{symbol: string, name: string}>>([]);
-  const [symbolList, setSymbolList] = useState<Array<{symbol: string, name: string}>>([]);
+  const [symbolList, setSymbolList] = useState<Array<{symbol: string, name: string, category: string}>>([]);
   const [blueChipStocks, setBlueChipStocks] = useState<string[]>([]);
   const [showRankingsModal, setShowRankingsModal] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockPick | null>(null);
@@ -664,7 +664,16 @@ export default function AIPicks({ navigation }: any) {
             <TouchableOpacity onPress={() => navigation.navigate('StockSearch', { preSelectedSymbol: item.ticker, symbolList })}>
               <Text style={styles.ticker}>{item.ticker}</Text>
             </TouchableOpacity>
-            <Text style={styles.company} numberOfLines={1}>{item.companyName}</Text>
+            <Text style={styles.company} numberOfLines={1}>
+              {item.companyName}
+              {(() => {
+                const stockInfo = symbolList.find(s => s.symbol === item.ticker);
+                if (stockInfo?.category) {
+                  return <Text style={styles.categoryText}> ({stockInfo.category})</Text>;
+                }
+                return null;
+              })()}
+            </Text>
           </View>
           <TouchableOpacity
             onPress={() => toggleWatchListStock(item.ticker, item.companyName)}
@@ -879,6 +888,28 @@ export default function AIPicks({ navigation }: any) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {picks.length > 0 && (() => {
+        const categoryCounts: { [key: string]: number } = {};
+        picks.forEach(pick => {
+          const stockInfo = symbolList.find(s => s.symbol === pick.ticker);
+          if (stockInfo?.category) {
+            categoryCounts[stockInfo.category] = (categoryCounts[stockInfo.category] || 0) + 1;
+          }
+        });
+        const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
+        
+        if (sortedCategories.length > 0) {
+          return (
+            <View style={styles.categoryTally}>
+              <Text style={styles.categoryTallyText}>
+                Categories: {sortedCategories.map(([category, count]) => `${category.replace(/ /g, '\u00A0')}\u00A0(${count})`).join(', ')}
+              </Text>
+            </View>
+          );
+        }
+        return null;
+      })()}
 
       <Modal
         visible={showRankingsModal}
@@ -1352,6 +1383,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flexShrink: 1,
   },
+  categoryText: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 2,
+  },
   starButton: {
     padding: 2,
   },
@@ -1471,6 +1507,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 6,
     gap: 10,
+  },
+  categoryTally: {
+    marginHorizontal: 12,
+    marginTop: 0,
+    marginBottom: 0,
+    paddingVertical: 0,
+  },
+  categoryTallyText: {
+    fontSize: 11,
+    color: '#7dd3fc',
+    textAlign: 'center',
+    lineHeight: 16,
+    fontWeight: '500',
   },
   rankingsButton: {
     backgroundColor: 'rgba(0, 212, 255, 0.15)',

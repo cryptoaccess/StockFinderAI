@@ -89,15 +89,24 @@ const WatchList: React.FC = () => {
   const navigation = useNavigation();
   const [watchedStocks, setWatchedStocks] = useState<WatchedStock[]>([]);
   const [loading, setLoading] = useState(true);
-  const [symbolList, setSymbolList] = useState<Array<{symbol: string, name: string}>>([]);
+  const [symbolList, setSymbolList] = useState<Array<{symbol: string, name: string, category: string}>>([]);
   const [tradeData, setTradeData] = useState<Map<string, TradeInfo>>(new Map());
   const [showSharePrompt, setShowSharePrompt] = useState(false);
   const [editingSymbol, setEditingSymbol] = useState<string | null>(null);
   const [editingCompanyName, setEditingCompanyName] = useState<string>('');
   const [entryPriceInput, setEntryPriceInput] = useState('');
   const [sharesInput, setSharesInput] = useState('');
+  const [priceError, setPriceError] = useState(false);
+  const [sharesError, setSharesError] = useState(false);
   const [showRemovePrompt, setShowRemovePrompt] = useState(false);
   const [stockToRemove, setStockToRemove] = useState<{symbol: string, price: number} | null>(null);
+  const [filter, setFilter] = useState<'all' | 'positions'>('all');
+  const [newTradeCounts, setNewTradeCounts] = useState<Map<string, {
+    insiderPurchases: number,
+    insiderSales: number,
+    congressPurchases: number,
+    congressSales: number
+  }>>(new Map());
 
   useEffect(() => {
     loadWatchList();
@@ -249,8 +258,86 @@ const WatchList: React.FC = () => {
 
       setTradeData(tradesMap);
       console.log('[WatchList] Loaded trade data for', tradesMap.size, 'tickers');
+      
+      // Check and update daily snapshot for "New" badges
+      await checkDailyTradeSnapshot(tradesMap);
     } catch (error) {
       console.log('[WatchList] Error loading trade data:', error);
+    }
+  };
+
+  const checkDailyTradeSnapshot = async (currentTradeData: Map<string, TradeInfo>) => {
+    try {
+      const today = new Date().toDateString(); // e.g., "Fri Dec 20 2025"
+      const snapshotData = await AsyncStorage.getItem('dailyTradeSnapshot');
+      
+      let snapshot: { date: string, trades: Record<string, any> } | null = null;
+      if (snapshotData) {
+        snapshot = JSON.parse(snapshotData);
+      }
+      
+      // If snapshot is from a different day or doesn't exist, calculate "new" counts
+      if (!snapshot || snapshot.date !== today) {
+        const newCounts = new Map<string, {
+          insiderPurchases: number,
+          insiderSales: number,
+          congressPurchases: number,
+          congressSales: number
+        }>();
+        
+        if (snapshot) {
+          // Compare current data with yesterday's snapshot
+          currentTradeData.forEach((current, symbol) => {
+            const previous = snapshot!.trades[symbol];
+            if (previous) {
+              const newCount = {
+                insiderPurchases: Math.max(0, current.insiderPurchases - previous.insiderPurchases),
+                insiderSales: Math.max(0, current.insiderSales - previous.insiderSales),
+                congressPurchases: Math.max(0, current.congressPurchases - previous.congressPurchases),
+                congressSales: Math.max(0, current.congressSales - previous.congressSales)
+              };
+              
+              // Only add if there are any new trades
+              if (newCount.insiderPurchases > 0 || newCount.insiderSales > 0 || 
+                  newCount.congressPurchases > 0 || newCount.congressSales > 0) {
+                newCounts.set(symbol, newCount);
+              }
+            } else {
+              // Stock is new to watch list, all trades are "new"
+              newCounts.set(symbol, {
+                insiderPurchases: current.insiderPurchases,
+                insiderSales: current.insiderSales,
+                congressPurchases: current.congressPurchases,
+                congressSales: current.congressSales
+              });
+            }
+          });
+        }
+        
+        setNewTradeCounts(newCounts);
+        
+        // Save today's snapshot
+        const newSnapshot = {
+          date: today,
+          trades: Object.fromEntries(
+            Array.from(currentTradeData.entries()).map(([symbol, info]) => [
+              symbol,
+              {
+                insiderPurchases: info.insiderPurchases,
+                insiderSales: info.insiderSales,
+                congressPurchases: info.congressPurchases,
+                congressSales: info.congressSales
+              }
+            ])
+          )
+        };
+        await AsyncStorage.setItem('dailyTradeSnapshot', JSON.stringify(newSnapshot));
+      } else {
+        // Same day - use existing new counts from state (badges persist throughout the day)
+        // Don't reset the badges
+      }
+    } catch (error) {
+      console.log('[WatchList] Error checking daily snapshot:', error);
     }
   };
 
@@ -346,14 +433,44 @@ const WatchList: React.FC = () => {
     if (!editingSymbol) return;
     
     const price = parseFloat(entryPriceInput);
+    const shares = parseFloat(sharesInput);
+    
+    // Reset error states
+    setPriceError(false);
+    setSharesError(false);
+    
+    // Both fields can be empty, or both must be filled
+    const isPriceEntered = entryPriceInput.trim() !== '';
+    const isSharesEntered = sharesInput.trim() !== '';
+    
+    // If one field is filled, both must be filled
+    if (isPriceEntered && !isSharesEntered) {
+      setSharesError(true);
+      return;
+    }
+    
+    if (isSharesEntered && !isPriceEntered) {
+      setPriceError(true);
+      return;
+    }
+    
+    // If both are empty, just close the modal
+    if (!isPriceEntered && !isSharesEntered) {
+      setEditingSymbol(null);
+      setEntryPriceInput('');
+      setSharesInput('');
+      return;
+    }
+    
+    // Validate price
     if (isNaN(price) || price <= 0) {
-      Alert.alert('Invalid Price', 'Please enter a valid price greater than 0');
+      setPriceError(true);
       return;
     }
 
-    const shares = parseFloat(sharesInput);
+    // Validate shares
     if (isNaN(shares) || shares <= 0) {
-      Alert.alert('Invalid Shares', 'Please enter a valid number of shares greater than 0');
+      setSharesError(true);
       return;
     }
 
@@ -390,6 +507,7 @@ const WatchList: React.FC = () => {
   const renderStockItem = ({ item }: { item: WatchedStock }) => {
     const changeColor = (item.change || 0) >= 0 ? '#00ff88' : '#ff4444';
     const trades = tradeData.get(item.symbol.toUpperCase());
+    const newCounts = newTradeCounts.get(item.symbol.toUpperCase());
     
     // Calculate entry price gain/loss
     let entryGain = 0;
@@ -430,27 +548,54 @@ const WatchList: React.FC = () => {
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.nameText}>{item.name}</Text>
+                {(() => {
+                  const stockInfo = symbolList.find(s => s.symbol === item.symbol);
+                  if (stockInfo?.category) {
+                    return <Text style={styles.categoryText}>{stockInfo.category}</Text>;
+                  }
+                  return null;
+                })()}
                 {trades && (
                   <View style={styles.tradesInfoContainer}>
                     {trades.insiderPurchases > 0 && trades.mostRecentInsiderPurchaseDate && (
-                      <Text style={[styles.tradeText, { color: '#22c55e' }]}>
-                        {trades.insiderPurchases} Insider Buy{trades.insiderPurchases > 1 ? 's' : ''} ({formatDate(trades.mostRecentInsiderPurchaseDate)})
-                      </Text>
+                      <View style={styles.tradeRow}>
+                        <Text style={[styles.tradeText, { color: '#22c55e' }]}>
+                          {trades.insiderPurchases} Insider Buy{trades.insiderPurchases > 1 ? 's' : ''} ({formatDate(trades.mostRecentInsiderPurchaseDate)})
+                          {newCounts && newCounts.insiderPurchases > 0 && (
+                            <Text style={{ color: '#00d4ff' }}> - {newCounts.insiderPurchases} New</Text>
+                          )}
+                        </Text>
+                      </View>
                     )}
                     {trades.insiderSales > 0 && trades.mostRecentInsiderSaleDate && (
-                      <Text style={[styles.tradeText, { color: '#ef4444' }]}>
-                        {trades.insiderSales} Insider Sale{trades.insiderSales > 1 ? 's' : ''} ({formatDate(trades.mostRecentInsiderSaleDate)})
-                      </Text>
+                      <View style={styles.tradeRow}>
+                        <Text style={[styles.tradeText, { color: '#ef4444' }]}>
+                          {trades.insiderSales} Insider Sale{trades.insiderSales > 1 ? 's' : ''} ({formatDate(trades.mostRecentInsiderSaleDate)})
+                          {newCounts && newCounts.insiderSales > 0 && (
+                            <Text style={{ color: '#00d4ff' }}> - {newCounts.insiderSales} New</Text>
+                          )}
+                        </Text>
+                      </View>
                     )}
                     {trades.congressPurchases > 0 && trades.mostRecentCongressPurchaseDate && (
-                      <Text style={[styles.tradeText, { color: '#22c55e' }]}>
-                        {trades.congressPurchases} Congress Buy{trades.congressPurchases > 1 ? 's' : ''} ({formatDate(trades.mostRecentCongressPurchaseDate)})
-                      </Text>
+                      <View style={styles.tradeRow}>
+                        <Text style={[styles.tradeText, { color: '#22c55e' }]}>
+                          {trades.congressPurchases} Congress Buy{trades.congressPurchases > 1 ? 's' : ''} ({formatDate(trades.mostRecentCongressPurchaseDate)})
+                          {newCounts && newCounts.congressPurchases > 0 && (
+                            <Text style={{ color: '#00d4ff' }}> - {newCounts.congressPurchases} New</Text>
+                          )}
+                        </Text>
+                      </View>
                     )}
                     {trades.congressSales > 0 && trades.mostRecentCongressSaleDate && (
-                      <Text style={[styles.tradeText, { color: '#ef4444' }]}>
-                        {trades.congressSales} Congress Sale{trades.congressSales > 1 ? 's' : ''} ({formatDate(trades.mostRecentCongressSaleDate)})
-                      </Text>
+                      <View style={styles.tradeRow}>
+                        <Text style={[styles.tradeText, { color: '#ef4444' }]}>
+                          {trades.congressSales} Congress Sale{trades.congressSales > 1 ? 's' : ''} ({formatDate(trades.mostRecentCongressSaleDate)})
+                          {newCounts && newCounts.congressSales > 0 && (
+                            <Text style={{ color: '#00d4ff' }}> - {newCounts.congressSales} New</Text>
+                          )}
+                        </Text>
+                      </View>
                     )}
                   </View>
                 )}
@@ -469,9 +614,10 @@ const WatchList: React.FC = () => {
                   <View style={styles.entryPriceSection}>
                     {!item.entryPrice && (
                       <TouchableOpacity 
+                        style={styles.setEntryPriceButton}
                         onPress={() => handleEditEntryPrice(item.symbol, item.entryPrice)}
                       >
-                        <Text style={styles.editButtonText}>(Set entry price)</Text>
+                        <Text style={styles.setEntryPriceButtonText}>Add to Portfolio</Text>
                       </TouchableOpacity>
                     )}
                     {item.entryPrice && (
@@ -483,11 +629,17 @@ const WatchList: React.FC = () => {
                         }}
                       >
                         <Text style={styles.entryPriceLabel}>
-                          Entry: ${item.entryPrice.toFixed(2)} × {item.shares || 0} shares
+                          My Position:
                         </Text>
-                        <Text style={[styles.entryGainText, { color: entryColor }]}>
-                          {totalGain >= 0 ? '+' : ''}${Math.round(totalGain)} ({entryGain >= 0 ? '+' : ''}{entryGainPercent.toFixed(1)}%)
+                        <Text style={styles.entryPriceLabel}>
+                          ${item.entryPrice.toFixed(2)} × {item.shares || 0} shares
                         </Text>
+                        <View style={styles.gainRow}>
+                          <Text style={[styles.entryGainText, { color: entryColor }]}>
+                            Gain: {totalGain >= 0 ? '+' : ''}${Math.round(totalGain)} ({entryGain >= 0 ? '+' : ''}{entryGainPercent.toFixed(1)}%)
+                          </Text>
+                          <Text style={styles.trashIcon}>✕</Text>
+                        </View>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -511,9 +663,12 @@ const WatchList: React.FC = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.removeModalContent}>
-            <Text style={styles.removeModalTitle}>Remove Entry Price</Text>
+            <Text style={styles.removeModalTitle}>Remove from Portfolio</Text>
             <Text style={styles.removeModalText}>
-              Remove entry price of ${stockToRemove?.price.toFixed(2)} for {stockToRemove?.symbol}?
+              Remove your position tracking for {stockToRemove?.symbol}?
+            </Text>
+            <Text style={styles.removeModalCompanyName}>
+              {watchedStocks.find(s => s.symbol === stockToRemove?.symbol)?.name}
             </Text>
             <View style={styles.removeButtonRow}>
               <TouchableOpacity 
@@ -532,7 +687,7 @@ const WatchList: React.FC = () => {
                 style={styles.editRemoveButton} 
                 onPress={() => {
                   if (stockToRemove) {
-                    handleEditEntryPrice(stockToRemove.symbol);
+                    handleEditEntryPrice(stockToRemove.symbol, stockToRemove.price);
                   }
                   setShowRemovePrompt(false);
                   setStockToRemove(null);
@@ -563,9 +718,9 @@ const WatchList: React.FC = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.entryPriceModalContent}>
-            <Text style={styles.entryPriceModalTitle}>Set Entry Price for {editingSymbol}</Text>
-            <Text style={styles.entryPriceModalSubtitle}>{editingCompanyName}</Text>
-            <View style={styles.entryPriceInputContainer}>
+            <Text style={styles.entryPriceModalTitle}>Input Your Purchase Price</Text>
+            <Text style={styles.entryPriceModalSubtitle}>{editingCompanyName} ({editingSymbol})</Text>
+            <View style={[styles.entryPriceInputContainer, priceError && styles.inputError]}>
               <Text style={styles.dollarSign}>$</Text>
               <TextInput
                 style={styles.entryPriceInput}
@@ -573,19 +728,25 @@ const WatchList: React.FC = () => {
                 placeholderTextColor="#7dd3fc"
                 keyboardType="decimal-pad"
                 value={entryPriceInput}
-                onChangeText={setEntryPriceInput}
+                onChangeText={(text) => {
+                  setEntryPriceInput(text);
+                  setPriceError(false);
+                }}
                 autoFocus
               />
             </View>
-            <View style={styles.sharesInputContainer}>
+            <View style={[styles.sharesInputContainer, sharesError && styles.inputError]}>
               <Text style={styles.sharesLabel}>#</Text>
               <TextInput
                 style={styles.sharesInput}
-                placeholder="Enter shares (e.g., 100)"
+                placeholder="Number of shares (e.g., 100)"
                 placeholderTextColor="#7dd3fc"
                 keyboardType="decimal-pad"
                 value={sharesInput}
-                onChangeText={setSharesInput}
+                onChangeText={(text) => {
+                  setSharesInput(text);
+                  setSharesError(false);
+                }}
               />
             </View>
             <View style={styles.entryPriceButtonRow}>
@@ -606,7 +767,8 @@ const WatchList: React.FC = () => {
               </TouchableOpacity>
             </View>
             <Text style={styles.entryPriceDisclaimer}>
-              For tracking only. This app does not buy or sell stock.
+              For your portfolio tracking only.{"\n"}
+              This app does not buy or sell stock.
             </Text>
           </View>
         </View>
@@ -648,15 +810,88 @@ const WatchList: React.FC = () => {
         </Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.searchButton}
-        onPress={() => {
-          // @ts-ignore
-          navigation.navigate('StockSearch', { symbolList });
-        }}
-      >
-        <Text style={styles.searchButtonText}>Search for Stocks</Text>
-      </TouchableOpacity>
+      <View style={styles.filterButtonRow}>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'positions' && styles.filterButtonActive]}
+          onPress={() => setFilter('positions')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'positions' && styles.filterButtonTextActive]}>My Portfolio</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+          onPress={() => setFilter('all')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'all' && styles.filterButtonTextActive]}>All Stocks</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.searchButton}
+          onPress={() => {
+            // @ts-ignore
+            navigation.navigate('StockSearch', { symbolList });
+          }}
+        >
+          <Text style={styles.searchButtonText}>Stock Search</Text>
+        </TouchableOpacity>
+      </View>
+
+      {watchedStocks.length > 0 && (() => {
+        const categoryCounts: { [key: string]: number } = {};
+        const stocksToCount = filter === 'positions' 
+          ? watchedStocks.filter(stock => stock.entryPrice !== undefined && stock.currentPrice !== undefined)
+          : watchedStocks;
+        
+        stocksToCount.forEach(stock => {
+          const stockInfo = symbolList.find(s => s.symbol === stock.symbol);
+          if (stockInfo?.category) {
+            categoryCounts[stockInfo.category] = (categoryCounts[stockInfo.category] || 0) + 1;
+          }
+        });
+        const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
+        
+        if (sortedCategories.length > 0) {
+          return (
+            <View style={styles.categoryTally}>
+              <Text style={styles.categoryTallyText}>
+                Categories: {sortedCategories.map(([category, count]) => `${category.replace(/ /g, '\u00A0')}\u00A0(${count})`).join(', ')}
+              </Text>
+            </View>
+          );
+        }
+        return null;
+      })()}
+
+      {filter === 'positions' && (() => {
+        const positionStocks = watchedStocks.filter(stock => stock.entryPrice !== undefined && stock.currentPrice !== undefined);
+        const totalInvested = positionStocks.reduce((sum, stock) => {
+          return sum + ((stock.entryPrice || 0) * (stock.shares || 0));
+        }, 0);
+        const currentValue = positionStocks.reduce((sum, stock) => {
+          return sum + ((stock.currentPrice || 0) * (stock.shares || 0));
+        }, 0);
+        const totalGain = currentValue - totalInvested;
+        const totalGainPercent = totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
+        const gainColor = totalGain >= 0 ? '#00ff88' : '#ff4444';
+
+        return (
+          <View style={styles.portfolioSummary}>
+            <Text style={styles.portfolioTitle}>Portfolio Summary</Text>
+            <View style={styles.portfolioRow}>
+              <Text style={styles.portfolioLabel}>Total Invested:</Text>
+              <Text style={styles.portfolioValue}>${Math.round(totalInvested).toLocaleString()}</Text>
+            </View>
+            <View style={styles.portfolioRow}>
+              <Text style={styles.portfolioLabel}>Current Value:</Text>
+              <Text style={styles.portfolioValue}>${Math.round(currentValue).toLocaleString()}</Text>
+            </View>
+            <View style={styles.portfolioRow}>
+              <Text style={styles.portfolioLabel}>Total Gain/Loss:</Text>
+              <Text style={[styles.portfolioGain, { color: gainColor }]}>
+                {totalGain >= 0 ? '+' : '-'}${Math.round(Math.abs(totalGain)).toLocaleString()} ({totalGain >= 0 ? '+' : ''}{totalGainPercent.toFixed(1)}%)
+              </Text>
+            </View>
+          </View>
+        );
+      })()}
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -673,7 +908,7 @@ const WatchList: React.FC = () => {
         </View>
       ) : (
         <FlatList
-          data={watchedStocks}
+          data={filter === 'positions' ? watchedStocks.filter(stock => stock.entryPrice !== undefined) : watchedStocks}
           renderItem={renderStockItem}
           keyExtractor={(item) => item.symbol}
           contentContainerStyle={styles.listContainer}
@@ -730,19 +965,99 @@ const styles = StyleSheet.create({
     color: '#7dd3fc',
     lineHeight: 24,
   },
-  searchButton: {
-    backgroundColor: 'rgba(0, 212, 255, 0.2)',
-    borderRadius: 8,
-    padding: 12,
+  filterButtonRow: {
+    flexDirection: 'row',
     marginHorizontal: 12,
     marginVertical: 12,
+    gap: 8,
+  },
+  filterButton: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+    borderRadius: 8,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#00d4ff',
+    alignItems: 'center',
+  },
+  filterButtonActive: {
+    backgroundColor: 'rgba(0, 212, 255, 0.3)',
+  },
+  filterButtonText: {
+    color: '#7dd3fc',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  filterButtonTextActive: {
+    color: '#00d4ff',
+  },
+  searchButton: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+    borderRadius: 8,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: '#00d4ff',
     alignItems: 'center',
   },
   searchButtonText: {
+    color: '#7dd3fc',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  categoryTally: {
+    marginHorizontal: 12,
+    marginTop: 0,
+    marginBottom: 0,
+    paddingVertical: 0,
+  },
+  categoryTallyText: {
+    fontSize: 11,
+    color: '#7dd3fc',
+    textAlign: 'center',
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  portfolioSummary: {
+    backgroundColor: '#0a1929',
+    marginHorizontal: 12,
+    marginTop: 12,
+    marginBottom: 4,
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
+    shadowColor: '#00d4ff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  portfolioTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
     color: '#00d4ff',
-    fontSize: 15,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  portfolioRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  portfolioLabel: {
+    fontSize: 14,
+    color: '#cbd5e1',
+  },
+  portfolioValue: {
+    fontSize: 14,
+    color: '#e2e8f0',
+    fontWeight: '600',
+  },
+  portfolioGain: {
+    fontSize: 14,
     fontWeight: 'bold',
   },
   loadingContainer: {
@@ -822,10 +1137,27 @@ const styles = StyleSheet.create({
   tradesInfoContainer: {
     marginTop: 4,
   },
+  tradeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
   tradeText: {
     fontSize: 11,
     fontWeight: '600',
     marginTop: 2,
+  },
+  newBadge: {
+    backgroundColor: '#00d4ff',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  newBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#0a1929',
   },
   symbolText: {
     fontSize: 16,
@@ -836,6 +1168,11 @@ const styles = StyleSheet.create({
   nameText: {
     fontSize: 11,
     color: '#7dd3fc',
+  },
+  categoryText: {
+    fontSize: 10,
+    color: '#94a3b8',
+    marginTop: 2,
   },
   priceDataContainer: {
     alignItems: 'flex-end',
@@ -864,6 +1201,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#00d4ff',
   },
+  setEntryPriceButton: {
+    backgroundColor: 'rgba(0, 212, 255, 0.2)',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#00d4ff',
+    alignSelf: 'flex-end',
+    marginTop: 4,
+  },
+  setEntryPriceButtonText: {
+    color: '#00d4ff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   editButtonText: {
     fontSize: 12,
     color: '#7dd3fc',
@@ -884,7 +1236,8 @@ const styles = StyleSheet.create({
   },
   entryPriceLabel: {
     fontSize: 12,
-    color: '#7dd3fc',
+    fontWeight: 'bold',
+    color: '#e2e8f0',
     marginBottom: 2,
     textAlign: 'right',
   },
@@ -892,6 +1245,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     textAlign: 'right',
+  },
+  gainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+  },
+  trashIcon: {
+    fontSize: 13,
+    color: '#00d4ff',
+    fontWeight: 'bold',
   },
   removeModalContent: {
     backgroundColor: '#1e3a5f',
@@ -917,8 +1281,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#cbd5e1',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 8,
     lineHeight: 22,
+  },
+  removeModalCompanyName: {
+    fontSize: 14,
+    color: '#7dd3fc',
+    textAlign: 'center',
+    marginBottom: 24,
   },
   removeButtonRow: {
     flexDirection: 'row',
@@ -1043,6 +1413,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
   },
+  inputError: {
+    borderColor: '#ef4444',
+    borderWidth: 2,
+  },
   entryPriceButtonRow: {
     flexDirection: 'row',
     gap: 12,
@@ -1075,7 +1449,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   entryPriceDisclaimer: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#7dd3fc',
     textAlign: 'center',
     marginTop: 16,

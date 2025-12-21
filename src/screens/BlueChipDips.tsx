@@ -121,9 +121,9 @@ interface StockDipData {
 const BlueChipDips: React.FC = () => {
   const navigation = useNavigation();
   const [selectedStocks, setSelectedStocks] = useState<string[]>(DEFAULT_BLUE_CHIPS);
-  const [dayPeriod, setDayPeriod] = useState<number>(2); // Default 2 days
+  const [dayPeriod, setDayPeriod] = useState<number>(3); // Default 3 days
   const [dipThreshold, setDipThreshold] = useState<number>(-2); // Default -2%
-  const [growthThreshold, setGrowthThreshold] = useState<number>(10); // Default 10% 90-day growth
+  const [growthThreshold, setGrowthThreshold] = useState<number>(5); // Default 5% 90-day growth
   const [stockData, setStockData] = useState<StockDipData[]>([]);
   const [allStockData, setAllStockData] = useState<StockDipData[]>([]); // Store all fetched data
   const [loading, setLoading] = useState<boolean>(false);
