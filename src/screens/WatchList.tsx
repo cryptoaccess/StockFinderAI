@@ -344,9 +344,28 @@ const WatchList: React.FC = () => {
   const loadSymbolList = async () => {
     try {
       const cachedData = await AsyncStorage.getItem('stockSymbolList');
-      if (cachedData) {
-        setSymbolList(JSON.parse(cachedData));
+      const cacheTimestamp = await AsyncStorage.getItem('stockSymbolListTimestamp');
+      
+      // Use cache if it exists and is less than 7 days old
+      if (cachedData && cacheTimestamp) {
+        const daysSinceCache = (Date.now() - parseInt(cacheTimestamp)) / (1000 * 60 * 60 * 24);
+        if (daysSinceCache < 7) {
+          console.log('[WatchList] Using cached stock list for categories');
+          setSymbolList(JSON.parse(cachedData));
+          return;
+        }
       }
+      
+      // If no valid cache exists, create and cache the symbol list
+      // This ensures categories show even if HomeScreen hasn't been visited yet
+      console.log('[WatchList] Creating fresh symbol list for categories');
+      const { getStockSymbolList } = await import('./StockSymbolList');
+      const symbols = getStockSymbolList();
+      
+      await AsyncStorage.setItem('stockSymbolList', JSON.stringify(symbols));
+      await AsyncStorage.setItem('stockSymbolListTimestamp', Date.now().toString());
+      
+      setSymbolList(symbols);
     } catch (error) {
       console.log('Error loading symbol list:', error);
     }
