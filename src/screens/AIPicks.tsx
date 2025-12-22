@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import CongressTradesService from '../services/CongressTradesService';
 import InsiderTradesService from '../services/InsiderTradesService';
+import { getStockSymbolList } from './StockSymbolList';
 
 // Full list of 71 blue chip stocks for AI Picks analysis
 const DEFAULT_BLUE_CHIPS = [
@@ -94,10 +95,8 @@ export default function AIPicks({ navigation }: any) {
         setWatchList(loadedWatchList);
       }
       // Also load symbol list for stock search
-      const cachedSymbols = await AsyncStorage.getItem('stockSymbolList');
-      if (cachedSymbols) {
-        setSymbolList(JSON.parse(cachedSymbols));
-      }
+      const symbols = getStockSymbolList();
+      setSymbolList(symbols);
       return loadedWatchList;
     } catch (error) {
       console.error('Failed to load watch list:', error);
@@ -666,13 +665,6 @@ export default function AIPicks({ navigation }: any) {
             </TouchableOpacity>
             <Text style={styles.company} numberOfLines={1}>
               {item.companyName}
-              {(() => {
-                const stockInfo = symbolList.find(s => s.symbol === item.ticker);
-                if (stockInfo?.category) {
-                  return <Text style={styles.categoryText}> ({stockInfo.category})</Text>;
-                }
-                return null;
-              })()}
             </Text>
           </View>
           <TouchableOpacity
@@ -888,28 +880,6 @@ export default function AIPicks({ navigation }: any) {
           </TouchableOpacity>
         </View>
       </View>
-
-      {picks.length > 0 && (() => {
-        const categoryCounts: { [key: string]: number } = {};
-        picks.forEach(pick => {
-          const stockInfo = symbolList.find(s => s.symbol === pick.ticker);
-          if (stockInfo?.category) {
-            categoryCounts[stockInfo.category] = (categoryCounts[stockInfo.category] || 0) + 1;
-          }
-        });
-        const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
-        
-        if (sortedCategories.length > 0) {
-          return (
-            <View style={styles.categoryTally}>
-              <Text style={styles.categoryTallyText}>
-                Categories: {sortedCategories.map(([category, count]) => `${category.replace(/ /g, '\u00A0')}\u00A0(${count})`).join(', ')}
-              </Text>
-            </View>
-          );
-        }
-        return null;
-      })()}
 
       <Modal
         visible={showRankingsModal}
@@ -1383,11 +1353,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flexShrink: 1,
   },
-  categoryText: {
-    fontSize: 13,
-    color: '#64748b',
-    marginTop: 2,
-  },
   starButton: {
     padding: 2,
   },
@@ -1507,19 +1472,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 6,
     gap: 10,
-  },
-  categoryTally: {
-    marginHorizontal: 12,
-    marginTop: 0,
-    marginBottom: 0,
-    paddingVertical: 0,
-  },
-  categoryTallyText: {
-    fontSize: 11,
-    color: '#7dd3fc',
-    textAlign: 'center',
-    lineHeight: 16,
-    fontWeight: '500',
   },
   rankingsButton: {
     backgroundColor: 'rgba(0, 212, 255, 0.15)',

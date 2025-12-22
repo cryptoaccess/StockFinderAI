@@ -13,6 +13,7 @@ import { useRoute, useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CongressTradesService from '../services/CongressTradesService';
+import { getStockSymbolList, StockSymbol } from './StockSymbolList';
 
 /**
  * Congress Trades Screen
@@ -77,6 +78,8 @@ export default function CongressTrades({ navigation }: any) {
   const [gopCount, setGopCount] = useState(0);
   const [mostBoughtStocks, setMostBoughtStocks] = useState<string>('');
   const [mostSoldStocks, setMostSoldStocks] = useState<string>('');
+  const [mostBoughtCategory, setMostBoughtCategory] = useState<string>('');
+  const [mostSoldCategory, setMostSoldCategory] = useState<string>('');
   const [favoriteMembers, setFavoriteMembers] = useState<Array<{name: string, state: string}>>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
@@ -99,10 +102,8 @@ export default function CongressTrades({ navigation }: any) {
         setWatchList(JSON.parse(saved));
       }
       // Also load symbol list for stock search
-      const cachedSymbols = await AsyncStorage.getItem('stockSymbolList');
-      if (cachedSymbols) {
-        setSymbolList(JSON.parse(cachedSymbols));
-      }
+      const symbols = getStockSymbolList();
+      setSymbolList(symbols);
       // Load favorite congress members
       const savedFavorites = await AsyncStorage.getItem('favoriteCongressMembers');
       if (savedFavorites) {
@@ -294,6 +295,36 @@ export default function CongressTrades({ navigation }: any) {
     
     setMostBoughtStocks(getTopStocks(purchaseTickers));
     setMostSoldStocks(getTopStocks(saleTickers));
+    
+    // Calculate most popular categories
+    const stockSymbolList = getStockSymbolList();
+    const tickerToCategory = new Map<string, string>();
+    stockSymbolList.forEach(stock => {
+      tickerToCategory.set(stock.symbol, stock.category);
+    });
+    
+    const purchaseTrades = allTrades.filter(t => t.transactionType.toLowerCase().includes('purchase'));
+    const saleTrades = allTrades.filter(t => t.transactionType.toLowerCase().includes('sale'));
+    
+    const getTopCategory = (trades: TradeListing[]) => {
+      const categoryCounts = trades.reduce((acc, trade) => {
+        const category = tickerToCategory.get(trade.ticker);
+        // Only count if the ticker exists in our stock symbol list
+        if (category) {
+          acc[category] = (acc[category] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const sortedCategories = Object.entries(categoryCounts)
+        .sort((a, b) => b[1] - a[1]);
+      
+      if (sortedCategories.length === 0) return 'N/A';
+      return `${sortedCategories[0][0]} (${sortedCategories[0][1]})`;
+    };
+    
+    setMostBoughtCategory(getTopCategory(purchaseTrades));
+    setMostSoldCategory(getTopCategory(saleTrades));
   };
   
   const updatePartyCounts = (allTrades: TradeListing[]) => {
@@ -598,8 +629,8 @@ export default function CongressTrades({ navigation }: any) {
           During the last 30 days, there were {saleCount} sales and {purchaseCount} purchases of stock by these politicians or their family members.
         </Text>
         {(mostBoughtStocks || mostSoldStocks) && (
-          <View style={[styles.popularStocksContainer, { flexWrap: 'wrap', flexDirection: 'column', alignItems: 'flex-start' }]}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+          <View style={[styles.popularStocksContainer, { flexWrap: 'wrap', flexDirection: 'column', alignItems: 'center' }]}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={[styles.popularStocksValue, { color: '#22c55e' }]}>Most Bought:</Text>
               {(() => {
                 // Calculate ticker counts for Most Bought (filtered by party)
@@ -623,7 +654,7 @@ export default function CongressTrades({ navigation }: any) {
                 )) : <Text style={[styles.popularStocksValue, { color: '#22c55e' }]}> N/A</Text>;
               })()}
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 2 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
               <Text style={[styles.popularStocksValue, { color: '#ef4444' }]}>Most Sold:</Text>
               {(() => {
                 // Calculate ticker counts for Most Sold (filtered by party)
@@ -649,6 +680,15 @@ export default function CongressTrades({ navigation }: any) {
             </View>
           </View>
         )}
+        
+        <View style={styles.categoryStatsContainer}>
+          <Text style={styles.categoryStatsText}>
+            Most bought category: <Text style={styles.categoryStatsHighlight}>{mostBoughtCategory || 'N/A'}</Text>
+          </Text>
+          <Text style={styles.categoryStatsText}>
+            Most sold category: <Text style={styles.categoryStatsHighlight}>{mostSoldCategory || 'N/A'}</Text>
+          </Text>
+        </View>
       </View>
 
       <View style={styles.filterContainer}>
@@ -1034,6 +1074,22 @@ const styles = StyleSheet.create({
   stateText: {
     fontSize: 14,
     color: '#94a3b8',
+    fontWeight: '600',
+  },
+  categoryStatsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  categoryStatsText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  categoryStatsHighlight: {
+    fontSize: 12,
+    color: '#00d4ff',
     fontWeight: '600',
   },
   tickerBadge: {

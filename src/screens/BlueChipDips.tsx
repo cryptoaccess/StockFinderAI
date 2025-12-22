@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { LineChart } from 'react-native-chart-kit';
+import { getStockSymbolList } from './StockSymbolList';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -142,19 +143,14 @@ const BlueChipDips: React.FC = () => {
   const thresholdOptions = [-2, -3, -4, -5];
   const growthOptions = [5, 10, 15, 20, 25, 30];
 
-  // Load symbol list from cache
+  // Load symbol list from centralized source
   useEffect(() => {
-    const loadSymbolList = async () => {
-      try {
-        const cachedData = await AsyncStorage.getItem('stockSymbolList');
-        if (cachedData) {
-          setSymbolList(JSON.parse(cachedData));
-        }
-      } catch (error) {
-        console.log('Error loading symbol list:', error);
-      }
-    };
-    loadSymbolList();
+    try {
+      const symbols = getStockSymbolList();
+      setSymbolList(symbols);
+    } catch (error) {
+      console.log('Error loading symbol list:', error);
+    }
   }, []);
 
   const generateDateLabels = (dates: string[]): string[] => {

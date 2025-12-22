@@ -5,6 +5,7 @@ import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/nativ
 import { LineChart } from 'react-native-chart-kit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { getStockSymbolList } from './StockSymbolList';
 
 const screenWidth = require('react-native').Dimensions.get('window').width;
 
@@ -126,12 +127,9 @@ const StockSearch = () => {
 
   const loadSymbolList = async () => {
     try {
-      const cachedSymbols = await AsyncStorage.getItem('stockSymbolList');
-      if (cachedSymbols) {
-        const parsedSymbols = JSON.parse(cachedSymbols);
-        setSymbolList(parsedSymbols);
-        console.log(`Loaded ${parsedSymbols.length} symbols from cache`);
-      }
+      const symbols = getStockSymbolList();
+      setSymbolList(symbols);
+      console.log(`Loaded ${symbols.length} symbols from centralized list`);
     } catch (error) {
       console.error('Failed to load symbol list:', error);
     }
