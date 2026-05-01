@@ -26,7 +26,8 @@ aptPkgs = [
 
 [phases.install]
 cmds = [
-  "npm ci --omit=dev --omit=optional"
+  "npm ci --omit=dev",
+  "npx puppeteer browsers install chrome"
 ]
 
 [start]

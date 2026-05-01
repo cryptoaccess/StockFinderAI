@@ -3,7 +3,59 @@ const cors = require('cors');
 const puppeteer = require('puppeteer');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
+
+const PUPPETEER_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-accelerated-2d-canvas',
+  '--no-first-run',
+  '--disable-gpu',
+  '--disable-software-rasterizer',
+  '--disable-features=site-per-process'
+];
+
+const resolveExecutablePath = () => {
+  // Railway users can set one of these env vars if needed
+  return (
+    process.env.PUPPETEER_EXECUTABLE_PATH ||
+    process.env.GOOGLE_CHROME_BIN ||
+    process.env.CHROME_BIN ||
+    undefined
+  );
+};
+
+const launchBrowser = async () => {
+  const executablePath = resolveExecutablePath();
+  const launchOptions = {
+    headless: true,
+    args: PUPPETEER_ARGS,
+    protocolTimeout: 120000
+  };
+
+  if (executablePath) {
+    launchOptions.executablePath = executablePath;
+    console.log(`Launching Puppeteer with explicit executablePath: ${executablePath}`);
+  } else {
+    console.log('Launching Puppeteer with bundled Chrome');
+  }
+
+  let lastError;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await puppeteer.launch(launchOptions);
+    } catch (error) {
+      lastError = error;
+      console.error(`Puppeteer launch attempt ${attempt} failed:`, error.message);
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+    }
+  }
+
+  throw lastError;
+};
 
 // Enable CORS so React Native app can call this API
 app.use(cors());
@@ -13,6 +65,7 @@ let cachedTrades = null;
 let lastFetchDate = null; // Store the date of last fetch
 
 app.get('/api/trades', async (req, res) => {
+  let browser = null;
   try {
     console.log('Received request for trades data');
     
@@ -28,19 +81,7 @@ app.get('/api/trades', async (req, res) => {
     console.log(`Fetching fresh data for ${today}...`);
     
     // Launch headless browser
-    const browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ]
-    });
+    browser = await launchBrowser();
     
     const page = await browser.newPage();
     
@@ -297,6 +338,7 @@ app.get('/api/trades', async (req, res) => {
     }
     
     await browser.close();
+    browser = null;
     
     console.log(`Successfully scraped ${allTrades.length} total trades from all pages`);
     
@@ -321,6 +363,14 @@ app.get('/api/trades', async (req, res) => {
       error: 'Failed to fetch trades',
       message: error.message 
     });
+  } finally {
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Failed to close trades browser instance:', closeError.message);
+      }
+    }
   }
 });
 
@@ -333,6 +383,7 @@ let cachedInsiderTrades = null;
 let lastInsiderFetchDate = null;
 
 app.get('/api/insider-trades', async (req, res) => {
+  let browser = null;
   try {
     console.log('Received request for insider trades data');
     
@@ -345,19 +396,7 @@ app.get('/api/insider-trades', async (req, res) => {
     
     console.log(`Fetching fresh insider trades for ${today}...`);
     
-    const browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ]
-    });
+    browser = await launchBrowser();
     
     const page = await browser.newPage();
     
@@ -427,6 +466,7 @@ app.get('/api/insider-trades', async (req, res) => {
     });
 
     await browser.close();
+    browser = null;
 
     // Filter to last 30 calendar days
     const now = new Date();
@@ -450,6 +490,14 @@ app.get('/api/insider-trades', async (req, res) => {
       error: 'Failed to fetch insider trades',
       message: error.message 
     });
+  } finally {
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Failed to close insider browser instance:', closeError.message);
+      }
+    }
   }
 });
 
