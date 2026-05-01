@@ -522,13 +522,14 @@ app.get('/api/clear-cache', (req, res) => {
   res.json({ status: 'Cache cleared successfully' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Congress Trades API running on http://localhost:${PORT}`);
-  console.log(`Try: http://localhost:${PORT}/api/trades`);
-  console.log(`Try: http://localhost:${PORT}/api/insider-trades`);
-  console.log(`Clear cache: http://localhost:${PORT}/api/clear-cache`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Congress Trades API running on http://0.0.0.0:${PORT}`);
+  console.log(`Try: http://0.0.0.0:${PORT}/api/trades`);
+  console.log(`Try: http://0.0.0.0:${PORT}/api/insider-trades`);
+  console.log(`Clear cache: http://0.0.0.0:${PORT}/api/clear-cache`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Port binding: ${PORT}`);
+  console.log('Host binding: 0.0.0.0');
 });
 
 process.on('unhandledRejection', (reason) => {
