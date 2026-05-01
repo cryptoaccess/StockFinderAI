@@ -1,9 +1,16 @@
 const express = require('express');
 const cors = require('cors');
-const puppeteer = require('puppeteer');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+let puppeteerModule = null;
+const getPuppeteer = () => {
+  if (!puppeteerModule) {
+    puppeteerModule = require('puppeteer');
+  }
+  return puppeteerModule;
+};
 
 const PUPPETEER_ARGS = [
   '--no-sandbox',
@@ -27,6 +34,7 @@ const resolveExecutablePath = () => {
 };
 
 const launchBrowser = async () => {
+  const puppeteer = getPuppeteer();
   const executablePath = resolveExecutablePath();
   const launchOptions = {
     headless: true,
@@ -56,6 +64,10 @@ const launchBrowser = async () => {
 
   throw lastError;
 };
+
+app.get('/', (req, res) => {
+  res.status(200).send('StockFinderAI backend is running');
+});
 
 // Enable CORS so React Native app can call this API
 app.use(cors());
@@ -515,4 +527,14 @@ app.listen(PORT, () => {
   console.log(`Try: http://localhost:${PORT}/api/trades`);
   console.log(`Try: http://localhost:${PORT}/api/insider-trades`);
   console.log(`Clear cache: http://localhost:${PORT}/api/clear-cache`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Port binding: ${PORT}`);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error);
 });
