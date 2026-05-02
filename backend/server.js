@@ -2,7 +2,15 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const resolvePort = () => {
+  const rawPort = process.env.PORT;
+  if (!rawPort) return 3001;
+
+  const parsed = Number.parseInt(String(rawPort).replace(/[^0-9]/g, ''), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 3001;
+};
+
+const PORT = resolvePort();
 
 let puppeteerModule = null;
 const getPuppeteer = () => {
@@ -544,6 +552,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Try: http://0.0.0.0:${PORT}/api/insider-trades`);
   console.log(`Clear cache: http://0.0.0.0:${PORT}/api/clear-cache`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Raw PORT env: ${process.env.PORT || '(unset)'}`);
   console.log(`Port binding: ${PORT}`);
   console.log('Host binding: 0.0.0.0');
 });
