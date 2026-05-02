@@ -16,11 +16,43 @@ import { useEffect } from 'react';
 import AppNavigator from './AppNavigator';
 import CongressTradesService from './src/services/CongressTradesService';
 import InsiderTradesService from './src/services/InsiderTradesService';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
+  
+  // Add global error handling
+  useEffect(() => {
+    const handleUnhandledRejection = (event: any) => {
+      console.error('Unhandled promise rejection (silently handled):', event.reason);
+      // Prevent the default handler (which would crash the app)
+      event.preventDefault();
+    };
+
+    const handleError = (error: any) => {
+      console.error('Global error (silently handled):', error.error);
+      // Prevent the default handler
+      error.preventDefault();
+    };
+
+    // Add event listeners
+    const globalWindow = (globalThis as any)?.window;
+    if (globalWindow && typeof globalWindow.addEventListener === 'function') {
+      globalWindow.addEventListener('unhandledrejection', handleUnhandledRejection);
+      globalWindow.addEventListener('error', handleError);
+    }
+
+    // Cleanup
+    return () => {
+      const cleanupWindow = (globalThis as any)?.window;
+      if (cleanupWindow && typeof cleanupWindow.removeEventListener === 'function') {
+        cleanupWindow.removeEventListener('unhandledrejection', handleUnhandledRejection);
+        cleanupWindow.removeEventListener('error', handleError);
+      }
+    };
+  }, []);
   
   // Prefetch congressional trades and insider trades data in background on app startup
   useEffect(() => {
@@ -36,10 +68,12 @@ function App() {
   }, []);
   
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppNavigator />
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <AppNavigator />
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
