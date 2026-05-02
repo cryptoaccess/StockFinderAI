@@ -55,6 +55,7 @@ const HomeScreen = () => {
   
   const [dateLabels, setDateLabels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFetchingMarketData, setIsFetchingMarketData] = useState(false);
   const [lastUpdate, setLastUpdate] = useState('');
   const [timeRange, setTimeRange] = useState('7'); // '7', '30', or '90'
 
@@ -75,6 +76,13 @@ const HomeScreen = () => {
 
   // Fetch market data using Yahoo Finance
   const fetchAllMarketData = async () => {
+    // Prevent multiple simultaneous fetches
+    if (isFetchingMarketData) {
+      console.log('Fetch already in progress, skipping...');
+      return;
+    }
+    
+    setIsFetchingMarketData(true);
     setLoading(true);
     try {
       // Check cache first
@@ -109,6 +117,7 @@ const HomeScreen = () => {
           setDateLabels(labels);
           
           setLoading(false);
+          setIsFetchingMarketData(false);
           console.log('=== LOADED FROM CACHE ===');
           return;
         }
@@ -116,11 +125,32 @@ const HomeScreen = () => {
       
       console.log('=== FETCHING MARKET DATA FROM YAHOO FINANCE ===');
       
+      // Add timeout wrapper for all API calls
+      const fetchWithTimeout = async (url: string, timeoutMs: number = 20000) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        
+        try {
+          const response = await axios.get(url, { 
+            timeout: timeoutMs,
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          return response;
+        } catch (error) {
+          clearTimeout(timeoutId);
+          if (error.name === 'AbortError') {
+            throw new Error(`Request timeout after ${timeoutMs}ms`);
+          }
+          throw error;
+        }
+      };
+      
       // Fetch 3 months of data to support 90-day view with timeout
       const [dowResponse, sp500Response, nasdaqResponse] = await Promise.all([
-        axios.get('https://query1.finance.yahoo.com/v8/finance/chart/DIA?range=3mo&interval=1d', { timeout: 20000 }),
-        axios.get('https://query1.finance.yahoo.com/v8/finance/chart/SPY?range=3mo&interval=1d', { timeout: 20000 }),
-        axios.get('https://query1.finance.yahoo.com/v8/finance/chart/QQQ?range=3mo&interval=1d', { timeout: 20000 })
+        fetchWithTimeout('https://query1.finance.yahoo.com/v8/finance/chart/DIA?range=3mo&interval=1d'),
+        fetchWithTimeout('https://query1.finance.yahoo.com/v8/finance/chart/SPY?range=3mo&interval=1d'),
+        fetchWithTimeout('https://query1.finance.yahoo.com/v8/finance/chart/QQQ?range=3mo&interval=1d')
       ]);
       
       console.log('=== RESPONSES RECEIVED ===');
@@ -228,10 +258,13 @@ const HomeScreen = () => {
       }
       
       setLoading(false);
+      setIsFetchingMarketData(false);
     } catch (error) {
-      console.log('=== ERROR OCCURRED ===');
+      console.log('=== ERROR OCCURRED (silently handled) ===');
       console.log('Error fetching market data:', error);
       setLoading(false);
+      setIsFetchingMarketData(false);
+      // Don't show any error to user - just log and continue
     }
   };
 
@@ -322,8 +355,8 @@ const HomeScreen = () => {
       appOpenCount += 1;
       await AsyncStorage.setItem('appOpenCount', appOpenCount.toString());
       
-      // Show review prompt after 3 opens (first time) or 5 opens after "Remind me later"
-      const shouldShowReview = (!reviewPromptShown && appOpenCount >= 3) || 
+      // Show review prompt after 5 opens (first time) and 5 opens after "Remind me later"
+      const shouldShowReview = (!reviewPromptShown && appOpenCount >= 5) || 
                                (reviewPromptShown && remindLaterCount > 0 && appOpenCount >= remindLaterCount + 5);
       
       if (shouldShowReview) {
