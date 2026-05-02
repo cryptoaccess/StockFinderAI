@@ -72,6 +72,16 @@ app.get('/', (req, res) => {
 // Enable CORS so React Native app can call this API
 app.use(cors());
 
+// Request logger for Railway diagnostics
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+  console.log(`[REQ] ${req.method} ${req.originalUrl}`);
+  res.on('finish', () => {
+    console.log(`[RES] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${Date.now() - startedAt}ms)`);
+  });
+  next();
+});
+
 // Cache for trades data (refresh once per calendar day)
 let cachedTrades = null;
 let lastFetchDate = null; // Store the date of last fetch
@@ -387,7 +397,13 @@ app.get('/api/trades', async (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', lastFetchDate: lastFetchDate });
+  res.json({
+    status: 'ok',
+    lastFetchDate: lastFetchDate,
+    lastInsiderFetchDate: lastInsiderFetchDate,
+    now: new Date().toISOString(),
+    uptimeSeconds: Math.floor(process.uptime())
+  });
 });
 
 // Cache for insider trades data
