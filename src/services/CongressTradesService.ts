@@ -101,9 +101,12 @@ class CongressTradesService {
    * Get trades - returns cached if available, otherwise waits for fetch
    */
   async getTrades(): Promise<TradeListing[]> {
+    const cacheDate = this.getCacheDate();
+    const lastFetchDate = await AsyncStorage.getItem(LAST_FETCH_DATE_KEY);
+
     // If we have cached data, return it immediately
-    if (this.cachedTrades) {
-      console.log('[CongressTrades] Returning cached trades');
+    if (this.cachedTrades && lastFetchDate === cacheDate) {
+      console.log('[CongressTrades] Returning in-memory cached trades for', cacheDate);
       return [...this.cachedTrades];
     }
 
@@ -115,24 +118,37 @@ class CongressTradesService {
 
     // Otherwise, check AsyncStorage
     const cached = await AsyncStorage.getItem(CACHE_KEY);
+    let parsedTrades: TradeListing[] | null = null;
     if (cached) {
-      console.log('[CongressTrades] Loading from AsyncStorage');
-      const parsedTrades: TradeListing[] = JSON.parse(cached);
-      this.cachedTrades = parsedTrades;
-      return parsedTrades;
+      parsedTrades = JSON.parse(cached);
+      if (lastFetchDate === cacheDate) {
+        console.log('[CongressTrades] Loading valid cache from AsyncStorage for', cacheDate);
+        this.cachedTrades = parsedTrades;
+        return parsedTrades;
+      }
+      console.log('[CongressTrades] Cache is stale. lastFetchDate=', lastFetchDate, 'cacheDate=', cacheDate, '- fetching fresh data...');
     }
 
-    // No cache, fetch fresh
-    console.log('[CongressTrades] No cache, fetching fresh data...');
-    this.fetchPromise = this.fetchFreshTrades();
-    const trades = await this.fetchPromise;
-    this.cachedTrades = trades;
-    
-    const cacheDate = this.getCacheDate();
-    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(trades));
-    await AsyncStorage.setItem(LAST_FETCH_DATE_KEY, cacheDate);
-    
-    return trades;
+    // No valid cache, fetch fresh
+    console.log('[CongressTrades] No valid cache, fetching fresh data...');
+    try {
+      this.fetchPromise = this.fetchFreshTrades();
+      const trades = await this.fetchPromise;
+      this.cachedTrades = trades;
+      
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(trades));
+      await AsyncStorage.setItem(LAST_FETCH_DATE_KEY, cacheDate);
+      
+      return trades;
+    } catch (error) {
+      // Fallback to stale cache if API fails
+      if (parsedTrades) {
+        console.log('[CongressTrades] Fresh fetch failed, falling back to stale cache');
+        this.cachedTrades = parsedTrades;
+        return parsedTrades;
+      }
+      throw error;
+    }
   }
 
   /**

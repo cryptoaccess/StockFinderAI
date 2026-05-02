@@ -100,9 +100,12 @@ class InsiderTradesService {
    * Get trades - returns cached if available, otherwise waits for fetch
    */
   async getTrades(): Promise<InsiderTrade[]> {
+    const cacheDate = this.getCacheDate();
+    const lastFetchDate = await AsyncStorage.getItem(LAST_FETCH_DATE_KEY);
+
     // If we have cached data, return it immediately
-    if (this.cachedTrades) {
-      console.log('[InsiderTrades] Returning cached trades');
+    if (this.cachedTrades && lastFetchDate === cacheDate) {
+      console.log('[InsiderTrades] Returning in-memory cached trades for', cacheDate);
       return [...this.cachedTrades];
     }
 
@@ -114,24 +117,37 @@ class InsiderTradesService {
 
     // Otherwise, check AsyncStorage
     const cached = await AsyncStorage.getItem(CACHE_KEY);
+    let parsedTrades: InsiderTrade[] | null = null;
     if (cached) {
-      console.log('[InsiderTrades] Loading from AsyncStorage');
-      const parsedTrades: InsiderTrade[] = JSON.parse(cached);
-      this.cachedTrades = parsedTrades;
-      return parsedTrades;
+      parsedTrades = JSON.parse(cached);
+      if (lastFetchDate === cacheDate) {
+        console.log('[InsiderTrades] Loading valid cache from AsyncStorage for', cacheDate);
+        this.cachedTrades = parsedTrades;
+        return parsedTrades;
+      }
+      console.log('[InsiderTrades] Cache is stale. lastFetchDate=', lastFetchDate, 'cacheDate=', cacheDate, '- fetching fresh data...');
     }
 
-    // No cache, fetch fresh
-    console.log('[InsiderTrades] No cache, fetching fresh data...');
-    this.fetchPromise = this.fetchFreshTrades();
-    const trades = await this.fetchPromise;
-    this.cachedTrades = trades;
-    
-    const cacheDate = this.getCacheDate();
-    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(trades));
-    await AsyncStorage.setItem(LAST_FETCH_DATE_KEY, cacheDate);
-    
-    return trades;
+    // No valid cache, fetch fresh
+    console.log('[InsiderTrades] No valid cache, fetching fresh data...');
+    try {
+      this.fetchPromise = this.fetchFreshTrades();
+      const trades = await this.fetchPromise;
+      this.cachedTrades = trades;
+      
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(trades));
+      await AsyncStorage.setItem(LAST_FETCH_DATE_KEY, cacheDate);
+      
+      return trades;
+    } catch (error) {
+      // Fallback to stale cache if API fails
+      if (parsedTrades) {
+        console.log('[InsiderTrades] Fresh fetch failed, falling back to stale cache');
+        this.cachedTrades = parsedTrades;
+        return parsedTrades;
+      }
+      throw error;
+    }
   }
 
   /**
