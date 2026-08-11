@@ -124,7 +124,17 @@ app.get('/api/trades', async (req, res) => {
       timeout: 60000
     });
     
-    await page.waitForSelector('table tbody tr', { timeout: 30000 });
+    const rowSelectors = [
+      '.hover\\:bg-neutral-100\\/50',
+      '.politician-name',
+      'table tbody tr'
+    ];
+    const rowSelector = rowSelectors.join(', ');
+    await page.waitForFunction(
+      selector => document.querySelectorAll(selector).length > 0,
+      { timeout: 30000 },
+      rowSelector
+    );
     
     // Detect total number of pages from pagination
     const totalPages = await page.evaluate(() => {
@@ -182,12 +192,27 @@ app.get('/api/trades', async (req, res) => {
           timeout: 60000
         });
         
-        await page.waitForSelector('table tbody tr', { timeout: 30000 });
+        const rowSelectors = [
+          '.hover\\:bg-neutral-100\\/50',
+          '.politician-name',
+          'table tbody tr'
+        ];
+        const pageRowSelector = rowSelectors.join(', ');
+        await page.waitForFunction(
+          selector => document.querySelectorAll(selector).length > 0,
+          { timeout: 30000 },
+          pageRowSelector
+        );
       }
       
       // Extract trade data using the CSS selectors from Power Query
       const { trades: tradesData, debug } = await page.evaluate(() => {
-        const rows = Array.from(document.querySelectorAll('.hover\\:bg-neutral-100\\/50'));
+        const rowSelectors = [
+          '.hover\\:bg-neutral-100\\/50',
+          '.politician-name',
+          'table tbody tr'
+        ];
+        const rows = Array.from(document.querySelectorAll(rowSelectors.join(', ')));
         let debugInfo = '';
       
       const trades = rows.map((row, index) => {
